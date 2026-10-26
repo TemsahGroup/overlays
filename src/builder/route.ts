@@ -1,0 +1,72 @@
+// Hash routes for the Gift Overlay Builder:
+//
+//   #/builder                    new configuration
+//   #/builder/<id>               edit a saved configuration (owner only)
+//   #/overlay/<id>               OBS overlay, config from the repository
+//   #/overlay/<id>?c=<data>      portable OBS overlay, public config in the link
+//   #/overlay/<id>?demo=1        plays a TEST gift every few seconds (layout check)
+//   #/overlay/<id>?live=0        do not connect to TikFinity Desktop
+//   #/overlay/<id>?setup=1       show the live connection status panel
+//   #/overlay/<id>?diag=1        + payload diagnostics (dev builds only)
+//   #/overlay/<id>?tf=<ws-url>   other Event API address (loopback only)
+//
+// Hash routes keep the existing query-parameter app untouched, need no router
+// dependency and work with Vite's relative `base: './'` on any static host.
+
+import { useEffect, useState } from 'react';
+import { isValidId } from './validate';
+import { isLoopbackWsUrl } from '../integrations/tikfinity/eventApi/parse';
+
+export type BuilderRoute =
+  | { page: 'builder'; id: string | null }
+  | {
+      page: 'overlay';
+      id: string;
+      portable: string | null;
+      demo: boolean;
+      live: boolean;
+      setup: boolean;
+      diag: boolean;
+      /** Validated loopback override, or null for the default address. */
+      eventApiUrl: string | null;
+    };
+
+export function parseHash(hash: string = window.location.hash): BuilderRoute | null {
+  const m = hash.match(/^#\/(builder|overlay)(?:\/([^?]*))?(?:\?(.*))?$/);
+  if (!m) return null;
+  const [, page, rawId, query] = m;
+  const id = rawId && isValidId(rawId) ? rawId : null;
+  if (page === 'builder') return { page: 'builder', id };
+  if (!id) return null;
+  const params = new URLSearchParams(query ?? '');
+  const tf = params.get('tf');
+  return {
+    page: 'overlay',
+    id,
+    portable: params.get('c'),
+    demo: params.get('demo') === '1',
+    live: params.get('live') !== '0',
+    setup: params.get('setup') === '1',
+    diag: import.meta.env.DEV && params.get('diag') === '1',
+    eventApiUrl: tf && isLoopbackWsUrl(tf) ? tf : null,
+  };
+}
+
+export function useHashRoute(): BuilderRoute | null {
+  const [route, setRoute] = useState(() => parseHash());
+  useEffect(() => {
+    const onChange = () => setRoute(parseHash());
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return route;
+}
+
+/** Absolute app URL (without hash), works for dev, preview and hosted builds. */
+export function appBaseUrl(): string {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+export function overlayUrl(id: string, portableData?: string): string {
+  return `${appBaseUrl()}#/overlay/${id}${portableData ? `?c=${portableData}` : ''}`;
+}
