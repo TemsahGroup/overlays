@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type {
   DiagnosticEntry,
   LiveState,
@@ -38,10 +38,12 @@ interface Props {
   state: LiveState | null;
   adapter: TikFinityEventApiAdapter | null;
   diag: boolean;
+  /** Page-specific setup controls (e.g. leaderboard reset). */
+  extra?: ReactNode;
 }
 
 /** Overlay setup view (?setup=1): explicit connection status, never shown otherwise. */
-export function LiveStatusPanel({ live, state, adapter, diag }: Props) {
+export function LiveStatusPanel({ live, state, adapter, diag, extra }: Props) {
   const [entries, setEntries] = useState<DiagnosticEntry[]>([]);
   const [, tick] = useState(0);
 
@@ -65,6 +67,7 @@ export function LiveStatusPanel({ live, state, adapter, diag }: Props) {
           <b>Live connection off</b>
           <span className="chip chip--mock">?live=0</span>
         </div>
+        {extra}
       </aside>
     );
   }
@@ -81,11 +84,12 @@ export function LiveStatusPanel({ live, state, adapter, diag }: Props) {
       <p className="hint">{state?.detail ?? 'Waiting for configuration…'}</p>
       {state && (
         <p className="hint mono">
-          {state.url} · messages {state.messages} (last {since(state.lastMessageAt)}) · final gifts received {state.giftsReceived}
+          {state.url} · messages {state.messages} (last {since(state.lastMessageAt)}) · final gifts received {state.giftsReceived} · like batches {state.likesReceived}
           {state.layout ? ` · payload layout ${state.layout}` : ''}
         </p>
       )}
       {(status === 'error' || status === 'disconnected') && <NotRunningHelp />}
+      {extra}
 
       {diag && (
         <div className="diag">
@@ -109,8 +113,15 @@ export function LiveStatusPanel({ live, state, adapter, diag }: Props) {
                 {e.gift && (
                   <p className="hint mono">
                     giftId={e.gift.giftId ?? '—'} giftName={e.gift.giftName ?? '—'} giftType={e.gift.giftType ?? '—'} repeatCount=
-                    {e.gift.repeatCount ?? '—'} repeatEnd={String(e.gift.repeatEnd ?? '—')} user={e.gift.user ?? '—'}
+                    {e.gift.repeatCount ?? '—'} repeatEnd={String(e.gift.repeatEnd ?? '—')} diamondCount={e.gift.diamondCount ?? '—'} user=
+                    {e.gift.user ?? '—'}
                     {e.gift.missing.length ? ` · missing: ${e.gift.missing.join(', ')}` : ''}
+                  </p>
+                )}
+                {e.like && (
+                  <p className="hint mono">
+                    like: {e.like.status} likeCount={e.like.likeCount ?? '—'} user={e.like.user ?? '—'}
+                    {e.like.missing.length ? ` · missing: ${e.like.missing.join(', ')}` : ''}
                   </p>
                 )}
                 {e.shape !== undefined && <pre>{JSON.stringify(e.shape, null, 1)}</pre>}

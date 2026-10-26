@@ -19,6 +19,15 @@
 //   user         data.uniqueId                 data.user.uniqueId | data.user.displayId
 //   nickname     data.nickname                 —
 //   message id   data.msgId                    —
+//   coin value   data.diamondCount             —   (meaning undocumented; assumed per gift, verify)
+//
+// Like events (v1 README; v2 documents likeCount and user only):
+//   likes        data.likeCount (this message's taps)
+//   user         data.uniqueId | data.user.uniqueId | data.user.displayId
+//   nickname     data.nickname
+//   message id   data.msgId
+// TikTok-Live-Connector notes that for busy streams TikTok does not always
+// send like events, so like totals are approximate.
 //
 // Streak rule (both docs): giftType 1 gifts are sent repeatedly with a rising
 // repeatCount while the streak runs; only the message with repeatEnd set is
@@ -61,6 +70,8 @@ export interface GiftFields {
   username?: string;
   nickname?: string;
   msgId?: string;
+  /** v1 `diamondCount`; assumed to be the value of ONE gift (to verify with real data). */
+  diamondCount?: number;
 }
 
 export interface GiftExtraction {
@@ -98,6 +109,7 @@ export function extractGift(data: Obj): GiftExtraction {
     username: text(data.uniqueId, 64) ?? text(user?.uniqueId, 64) ?? text(user?.displayId, 64),
     nickname: text(data.nickname, 64),
     msgId: idText(data.msgId),
+    diamondCount: int(data.diamondCount),
   };
 
   const missing: string[] = [];
@@ -107,10 +119,41 @@ export function extractGift(data: Obj): GiftExtraction {
   if (fields.repeatCount === undefined) missing.push('repeatCount');
   if (fields.repeatEnd === undefined) missing.push('repeatEnd');
   if (!fields.username) missing.push(layout === 'v2-nested' ? 'user.uniqueId' : 'uniqueId');
+  if (fields.diamondCount === undefined) missing.push('diamondCount');
 
   if (!fields.giftId && !fields.giftName) return { status: 'unrecognized', layout, fields, missing };
   const inStreak = fields.giftType === 1 && fields.repeatEnd !== true;
   return { status: inStreak ? 'streak-in-progress' : 'final', layout, fields, missing };
+}
+
+export interface LikeFields {
+  likeCount?: number;
+  username?: string;
+  nickname?: string;
+  msgId?: string;
+}
+
+export interface LikeExtraction {
+  status: 'final' | 'unrecognized';
+  fields: LikeFields;
+  missing: string[];
+}
+
+export function extractLike(data: Obj): LikeExtraction {
+  const user = isObj(data.user) ? data.user : null;
+  const likeCount = int(data.likeCount);
+  const fields: LikeFields = {
+    likeCount: likeCount && likeCount > 0 ? likeCount : undefined,
+    username: text(data.uniqueId, 64) ?? text(user?.uniqueId, 64) ?? text(user?.displayId, 64),
+    nickname: text(data.nickname, 64),
+    msgId: idText(data.msgId),
+  };
+  const missing: string[] = [];
+  if (!fields.likeCount) missing.push('likeCount');
+  if (!fields.username) missing.push(user ? 'user.uniqueId' : 'uniqueId');
+  // Without a positive count or a user there is nothing to attribute.
+  const ok = fields.likeCount !== undefined && fields.username !== undefined;
+  return { status: ok ? 'final' : 'unrecognized', fields, missing };
 }
 
 /**

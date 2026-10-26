@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NormalizedGiftEvent } from '../../../builder/giftEvents';
+import type { NormalizedGiftEvent, NormalizedLikeEvent } from '../../../builder/giftEvents';
 import { TikFinityEventApiAdapter, type SocketLike } from './TikFinityEventApiAdapter';
 
 class FakeSocket implements SocketLike {
@@ -171,6 +171,39 @@ describe('TikFinityEventApiAdapter', () => {
     expect(sockets[1].onclose).toBeNull();
     vi.advanceTimersByTime(10_000);
     expect(sockets).toHaveLength(2);
+    expect(events).toHaveLength(0);
+  });
+
+  it('emits like batches as live events and drops duplicate like messages', () => {
+    const { adapter, sockets, onEvent } = setup();
+    const likes: NormalizedLikeEvent[] = [];
+    adapter.connect(onEvent, { onLike: (l) => likes.push(l) });
+    sockets[0].open();
+    sockets[0].send({ event: 'like', data: { likeCount: 15, uniqueId: 'viewer1', msgId: 'L1' } });
+    sockets[0].send({ event: 'like', data: { likeCount: 15, uniqueId: 'viewer1', msgId: 'L1' } });
+    sockets[0].send({ event: 'like', data: { likeCount: 5, uniqueId: 'viewer2' } });
+    sockets[0].send({ event: 'like', data: { uniqueId: 'viewer3' } }); // no count
+    expect(likes).toEqual([
+      { type: 'like', username: 'viewer1', nickname: undefined, likeCount: 15, eventId: 'L1', isTest: false, provider: 'tikfinity' },
+      { type: 'like', username: 'viewer2', nickname: undefined, likeCount: 5, eventId: undefined, isTest: false, provider: 'tikfinity' },
+    ]);
+    expect(adapter.liveState.likesReceived).toBe(2);
+    expect(adapter.recentDiagnostics.map((d) => d.like?.status)).toEqual(['unrecognized', 'final', 'duplicate', 'final']);
+  });
+
+  it('passes diamondCount through on final gifts', () => {
+    const { adapter, sockets, events, onEvent } = setup();
+    adapter.connect(onEvent);
+    sockets[0].open();
+    sockets[0].send(gift({ ...rose, diamondCount: 1, repeatCount: 5, msgId: 'd1' }));
+    expect(events[0]).toMatchObject({ repeatCount: 5, diamondCount: 1 });
+  });
+
+  it('gift-only pages ignore likes (no onLike given)', () => {
+    const { adapter, sockets, events, onEvent } = setup();
+    adapter.connect(onEvent);
+    sockets[0].open();
+    sockets[0].send({ event: 'like', data: { likeCount: 15, uniqueId: 'viewer1' } });
     expect(events).toHaveLength(0);
   });
 

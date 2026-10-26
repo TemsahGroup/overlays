@@ -8,6 +8,8 @@ import { OverlayStage } from './components/OverlayStage';
 import { useHashRoute } from './builder/route';
 import { BuilderPage } from './builder/components/BuilderPage';
 import { BuilderOverlayPage } from './builder/components/BuilderOverlayPage';
+import { LeaderboardBuilderPage } from './leaderboard/components/LeaderboardBuilderPage';
+import { LeaderboardOverlayPage } from './leaderboard/components/LeaderboardOverlayPage';
 
 export default function App() {
   const route = useMemo(() => parseRoute(), []);
@@ -36,6 +38,11 @@ export default function App() {
   }, [route, builderRoute]);
 
   if (builderRoute?.page === 'builder') return <BuilderPage id={builderRoute.id} />;
+  if (builderRoute?.page === 'leaderboards') return <LeaderboardBuilderPage id={builderRoute.id} />;
+  if (builderRoute?.page === 'leaderboard') {
+    const { page: _page, ...flags } = builderRoute;
+    return <LeaderboardOverlayPage {...flags} />;
+  }
   if (builderRoute?.page === 'overlay') {
     return <BuilderOverlayPage {...builderRoute} />;
   }

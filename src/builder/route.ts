@@ -9,6 +9,9 @@
 //   #/overlay/<id>?setup=1       show the live connection status panel
 //   #/overlay/<id>?diag=1        + payload diagnostics (dev builds only)
 //   #/overlay/<id>?tf=<ws-url>   other Event API address (loopback only)
+//   #/leaderboards               leaderboard editor (new)
+//   #/leaderboards/<id>          edit a saved leaderboard
+//   #/leaderboard/<id>?c=<data>  leaderboard OBS overlay (same flags as #/overlay)
 //
 // Hash routes keep the existing query-parameter app untouched, need no router
 // dependency and work with Vite's relative `base: './'` on any static host.
@@ -17,8 +20,21 @@ import { useEffect, useState } from 'react';
 import { isValidId } from './validate';
 import { isLoopbackWsUrl } from '../integrations/tikfinity/eventApi/parse';
 
+/** Flags shared by every OBS overlay route. */
+export interface OverlayFlags {
+  id: string;
+  portable: string | null;
+  demo: boolean;
+  live: boolean;
+  setup: boolean;
+  diag: boolean;
+  eventApiUrl: string | null;
+}
+
 export type BuilderRoute =
   | { page: 'builder'; id: string | null }
+  | { page: 'leaderboards'; id: string | null }
+  | ({ page: 'leaderboard' } & OverlayFlags)
   | {
       page: 'overlay';
       id: string;
@@ -32,16 +48,16 @@ export type BuilderRoute =
     };
 
 export function parseHash(hash: string = window.location.hash): BuilderRoute | null {
-  const m = hash.match(/^#\/(builder|overlay)(?:\/([^?]*))?(?:\?(.*))?$/);
+  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard)(?:\/([^?]*))?(?:\?(.*))?$/);
   if (!m) return null;
   const [, page, rawId, query] = m;
   const id = rawId && isValidId(rawId) ? rawId : null;
-  if (page === 'builder') return { page: 'builder', id };
+  if (page === 'builder' || page === 'leaderboards') return { page, id };
   if (!id) return null;
   const params = new URLSearchParams(query ?? '');
   const tf = params.get('tf');
   return {
-    page: 'overlay',
+    page: page === 'leaderboard' ? 'leaderboard' : 'overlay',
     id,
     portable: params.get('c'),
     demo: params.get('demo') === '1',
@@ -69,4 +85,8 @@ export function appBaseUrl(): string {
 
 export function overlayUrl(id: string, portableData?: string): string {
   return `${appBaseUrl()}#/overlay/${id}${portableData ? `?c=${portableData}` : ''}`;
+}
+
+export function leaderboardUrl(id: string, portableData?: string): string {
+  return `${appBaseUrl()}#/leaderboard/${id}${portableData ? `?c=${portableData}` : ''}`;
 }

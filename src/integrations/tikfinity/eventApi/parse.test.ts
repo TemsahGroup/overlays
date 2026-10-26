@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeShape, extractGift, isLoopbackWsUrl, maskUser, parseMessage } from './parse';
+import { describeShape, extractGift, extractLike, isLoopbackWsUrl, maskUser, parseMessage } from './parse';
 
 // Fixtures follow the field names documented by TikTok-Live-Connector (which
 // TikFinity's Event API page references). They are NOT captured TikFinity
@@ -13,6 +13,7 @@ const v1Gift = {
   giftName: 'Rose',
   uniqueId: 'zerodytester',
   nickname: 'Zerody Tester',
+  diamondCount: 1,
 };
 const v2Gift = {
   giftId: 5655,
@@ -68,6 +69,7 @@ describe('extractGift', () => {
       username: 'zerodytester',
       nickname: 'Zerody Tester',
       msgId: '7137749190944230150',
+      diamondCount: 1,
     });
     expect(x.missing).toEqual([]);
   });
@@ -98,7 +100,39 @@ describe('extractGift', () => {
   it('ignores fields with unexpected types rather than coercing them', () => {
     const x = extractGift({ giftName: { evil: true }, giftId: 'id with spaces!', repeatCount: -4, giftType: '1', uniqueId: 7 });
     expect(x.status).toBe('unrecognized');
-    expect(x.fields).toEqual({ giftId: undefined, giftName: undefined, giftType: undefined, repeatCount: undefined, repeatEnd: undefined, username: undefined, nickname: undefined, msgId: undefined });
+    expect(x.fields).toEqual({ giftId: undefined, giftName: undefined, giftType: undefined, repeatCount: undefined, repeatEnd: undefined, username: undefined, nickname: undefined, msgId: undefined, diamondCount: undefined });
+  });
+});
+
+describe('extractGift diamondCount', () => {
+  it('reads a documented integer value and flags it when absent', () => {
+    expect(extractGift({ ...v1Gift, diamondCount: 25 }).fields.diamondCount).toBe(25);
+    const noValue = extractGift({ ...v1Gift, diamondCount: undefined });
+    expect(noValue.fields.diamondCount).toBeUndefined();
+    expect(noValue.missing).toContain('diamondCount');
+    expect(extractGift({ ...v1Gift, diamondCount: '25' }).fields.diamondCount).toBeUndefined();
+  });
+});
+
+describe('extractLike', () => {
+  it('reads the documented v1 like fields', () => {
+    const x = extractLike({ likeCount: 15, totalLikeCount: 900, uniqueId: 'viewer1', nickname: 'Viewer One', msgId: '77' });
+    expect(x).toEqual({ status: 'final', fields: { likeCount: 15, username: 'viewer1', nickname: 'Viewer One', msgId: '77' }, missing: [] });
+  });
+
+  it('reads the v2 nested user', () => {
+    expect(extractLike({ likeCount: 3, user: { uniqueId: 'v2user' } }).fields.username).toBe('v2user');
+  });
+
+  it.each([
+    [{ uniqueId: 'a' }, 'likeCount'],
+    [{ likeCount: 0, uniqueId: 'a' }, 'likeCount'],
+    [{ likeCount: '5', uniqueId: 'a' }, 'likeCount'],
+    [{ likeCount: 5 }, 'uniqueId'],
+  ])('refuses %j (missing %s)', (data, missing) => {
+    const x = extractLike(data as Record<string, unknown>);
+    expect(x.status).toBe('unrecognized');
+    expect(x.missing).toContain(missing);
   });
 });
 

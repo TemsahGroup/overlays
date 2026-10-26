@@ -28,6 +28,19 @@ export interface NormalizedGiftEvent {
   /** true for anything that is not a real live event. */
   isTest: boolean;
   provider: 'mock' | 'tikfinity';
+  /** Coin value of one gift when the provider sends it (TikFinity v1 `diamondCount`). */
+  diamondCount?: number;
+}
+
+/** A batch of likes from one viewer (used by leaderboards, not by gift effects). */
+export interface NormalizedLikeEvent {
+  type: 'like';
+  username: string;
+  nickname?: string;
+  likeCount: number;
+  eventId?: string;
+  isTest: boolean;
+  provider: 'mock' | 'tikfinity';
 }
 
 export type ConnectionState =

@@ -6,8 +6,14 @@
 // • Only messages parsed as documented gift events become NormalizedGiftEvents
 //   with provider 'tikfinity' / isTest false. No fallback to fake events.
 
-import { Deduper, type ConnectionState, type GiftEventAdapter, type NormalizedGiftEvent } from '../../../builder/giftEvents';
-import { describeShape, extractGift, maskUser, parseMessage, type GiftExtraction, type GiftLayout } from './parse';
+import {
+  Deduper,
+  type ConnectionState,
+  type GiftEventAdapter,
+  type NormalizedGiftEvent,
+  type NormalizedLikeEvent,
+} from '../../../builder/giftEvents';
+import { describeShape, extractGift, extractLike, maskUser, parseMessage, type GiftExtraction, type GiftLayout } from './parse';
 
 /** Default from the project brief; TikFinity's page shows ws://localhost:21213/ (same loopback service). */
 export const DEFAULT_EVENT_API_URL = 'ws://127.0.0.1:21213/';
@@ -24,6 +30,7 @@ export interface LiveState {
   attempts: number;
   messages: number;
   giftsReceived: number;
+  likesReceived: number;
   lastMessageAt: number | null;
   /** Set only after a real gift message was parsed — the "verified live" signal. */
   verifiedGiftAt: number | null;
@@ -47,8 +54,20 @@ export interface DiagnosticEntry {
     giftType?: number;
     repeatCount?: number;
     repeatEnd?: boolean;
+    diamondCount?: number;
     user?: string;
   };
+  like?: {
+    status: 'final' | 'unrecognized' | 'duplicate';
+    missing: string[];
+    likeCount?: number;
+    user?: string;
+  };
+}
+
+export interface ConnectOptions {
+  /** Receives like batches (leaderboards). Gift-only pages leave it out. */
+  onLike?: (event: NormalizedLikeEvent) => void;
 }
 
 /** Minimal WebSocket surface used here (lets tests inject a fake). */
@@ -76,6 +95,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private active = false;
   private onEvent: ((e: NormalizedGiftEvent) => void) | null = null;
+  private onLike: ((e: NormalizedLikeEvent) => void) | null = null;
   private stateListeners = new Set<(s: LiveState) => void>();
   private diagListeners = new Set<(d: DiagnosticEntry) => void>();
   private diagnostics: DiagnosticEntry[] = [];
@@ -97,6 +117,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       attempts: 0,
       messages: 0,
       giftsReceived: 0,
+      likesReceived: 0,
       lastMessageAt: null,
       verifiedGiftAt: null,
       layout: null,
@@ -131,8 +152,9 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
     };
   }
 
-  connect(onEvent: (event: NormalizedGiftEvent) => void): void {
+  connect(onEvent: (event: NormalizedGiftEvent) => void, options: ConnectOptions = {}): void {
     this.onEvent = onEvent;
+    this.onLike = options.onLike ?? null;
     if (this.active) return; // already running: never open a second socket
     this.active = true;
     this.open();
@@ -141,6 +163,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
   disconnect(): void {
     this.active = false;
     this.onEvent = null;
+    this.onLike = null;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     const ws = this.socket;
@@ -234,6 +257,10 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       return;
     }
     const entry: DiagnosticEntry = { at, kind: 'event', event: parsed.event, known: parsed.known, shape: describeShape(parsed.data) };
+    if (parsed.event === 'like') {
+      this.handleLike(parsed.data, entry, at);
+      return;
+    }
     if (parsed.event !== 'gift') {
       this.record(entry);
       return;
@@ -250,6 +277,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       giftType: f.giftType,
       repeatCount: f.repeatCount,
       repeatEnd: f.repeatEnd,
+      diamondCount: f.diamondCount,
       user: maskUser(f.username),
     };
 
@@ -285,6 +313,33 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       username: f.username ?? 'viewer',
       nickname: f.nickname,
       repeatCount: f.repeatCount && f.repeatCount > 0 ? f.repeatCount : 1,
+      eventId: f.msgId,
+      isTest: false,
+      provider: 'tikfinity',
+      diamondCount: f.diamondCount,
+    });
+  }
+
+  private handleLike(data: Record<string, unknown>, entry: DiagnosticEntry, at: number): void {
+    const x = extractLike(data);
+    const f = x.fields;
+    entry.like = { status: x.status, missing: x.missing, likeCount: f.likeCount, user: maskUser(f.username) };
+    if (x.status !== 'final' || !f.likeCount || !f.username) {
+      this.record(entry);
+      return;
+    }
+    if (this.dedupe.isDuplicate(f.msgId ? `like:${f.msgId}` : undefined, at)) {
+      entry.like.status = 'duplicate';
+      this.record(entry);
+      return;
+    }
+    this.record(entry);
+    this.setState({ likesReceived: this.live.likesReceived + 1 });
+    this.onLike?.({
+      type: 'like',
+      username: f.username,
+      nickname: f.nickname,
+      likeCount: f.likeCount,
       eventId: f.msgId,
       isTest: false,
       provider: 'tikfinity',

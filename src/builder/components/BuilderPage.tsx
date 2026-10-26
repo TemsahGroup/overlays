@@ -183,7 +183,7 @@ export function BuilderPage({ id }: { id: string | null }) {
           <div>
             <h1>Gift Overlay Builder</h1>
             <p className="sub">
-              Pick a gift, pick an effect, get an OBS link · <a href="./">LIVE Overlay Effects ↗</a>
+              <b>🎁 Gift effects</b> · <a href="#/leaderboards">🏆 Leaderboards</a> · <a href="./">LIVE Overlay Effects ↗</a>
             </p>
           </div>
           <span className="chip chip--mock" title={repository.capabilities.label}>LOCAL</span>

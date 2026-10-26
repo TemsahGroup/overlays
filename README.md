@@ -184,6 +184,27 @@ npm run preview
 
 ---
 
+## 🏆 لوحات الترتيب (Top Gifters / Top Likers)
+
+لوحة ترتيب حية بتظهر على البث، ولها رابط OBS **منفصل** عن مؤثرات الهدايا.
+
+| الرابط | الصفحة |
+|---|---|
+| `#/leaderboards` | إنشاء لوحة جديدة |
+| `#/leaderboards/<id>` | تعديل لوحة محفوظة |
+| `#/leaderboard/<id>?c=…` | **رابط OBS** (شفاف، بلا أزرار) |
+
+ويمكن الوصول لها من تبويب **🏆 Leaderboards** في الـ Builder.
+
+- **Top Gifters:** الترتيب **بقيمة العملات** (`diamondCount × repeatCount`). لو وصلت هدية من غير قيمة، اللوحة كلها تتحول لترتيب **بعدد الهدايا**، علشان ما نخلطش عملات بعدد. وصفحة `&setup=1` بتقول طريقة الترتيب المستخدمة.
+- **Top Likers:** مجموع اللايكات لكل مشاهد. الأرقام **تقريبية**، لأن TikTok ما بيبعتش كل أحداث اللايك في البثوث الكبيرة.
+- **كل بث لوحده:** الأرقام بتتحفظ في متصفح OBS عند الاستريمر، فبتفضل لو OBS اتعمله Refresh. واللوحة بتبدأ من الصفر لما يعدّي **3 ساعات** (قابلة للتعديل) من غير أي حدث، لأن TikFinity ما عنده حدث "البث بدأ".
+- **مسح يدوي:** أضف `&setup=1` للرابط، ودوس **Reset leaderboard now** من **Interact** في OBS.
+- **للتجربة:** `&demo=1` بيعرض بيانات **TEST DATA** في الذاكرة بس، من غير اتصال حي، ومش بتتحفظ.
+- **مقاس مقترح في OBS:** حوالي **500 × 700**.
+
+---
+
 ## 🔌 الربط مع TikFinity لاحقًا
 
 راجع **[src/integrations/tikfinity/README.md](src/integrations/tikfinity/README.md)**. يشرح الدليل:
@@ -245,6 +266,11 @@ src/
 │   │   ├── ParticleSystem.ts       # فيزياء الجزيئات والرسم
 │   │   └── sprites.ts              # رسم الأشكال مسبقًا (قلب، وردة، نجمة…)
 │   └── snow/                       # مؤثر الثلج
+├── leaderboard/                    # لوحات Top Gifters / Top Likers
+│   ├── store.ts                    # حساب النقاط والترتيب والجلسات (دوال فقط)
+│   ├── persistence.ts              # حفظ الجلسة في متصفح OBS
+│   ├── types.ts · validate.ts · repository.ts
+│   └── components/                 # LeaderboardBuilderPage, LeaderboardOverlayPage, LeaderboardView
 ├── builder/                        # Gift Overlay Builder (ميزة منفصلة)
 │   ├── types.ts                    # OverlayConfig / GiftMapping (schemaVersion 1)
 │   ├── validate.ts                 # التحقق والقيم الآمنة + الحقول العامة فقط

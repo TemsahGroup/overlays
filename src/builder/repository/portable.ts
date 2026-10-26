@@ -22,15 +22,25 @@ function fromBase64Url(data: string): string {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
-export function encodePortable(config: PublicOverlayConfig): string {
-  return toBase64Url(JSON.stringify(config));
+/** Generic portable encoding (base64url JSON) shared by every overlay type. */
+export function encodeJson(value: unknown): string {
+  return toBase64Url(JSON.stringify(value));
 }
 
-export function decodePortable(data: string): PublicOverlayConfig | null {
+/** Decodes and validates; returns null for oversized, malformed or invalid data. */
+export function decodeJson<T>(data: string, sanitize: (raw: unknown) => T | null): T | null {
   if (data.length > 8000) return null;
   try {
-    return sanitizePublic(JSON.parse(fromBase64Url(data)));
+    return sanitize(JSON.parse(fromBase64Url(data)));
   } catch {
     return null;
   }
+}
+
+export function encodePortable(config: PublicOverlayConfig): string {
+  return encodeJson(config);
+}
+
+export function decodePortable(data: string): PublicOverlayConfig | null {
+  return decodeJson(data, sanitizePublic);
 }
