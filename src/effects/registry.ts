@@ -3,6 +3,7 @@
 
 import { displayName, type OverlayEvent } from '../events/types';
 import type { BurstConfig, EffectId, EffectSettings } from './types';
+import type { HeroConfig } from './hero/HeroEffect';
 
 export interface EffectPlay {
   effectId: EffectId;
@@ -15,6 +16,8 @@ export interface EffectPlay {
   duration: number;
   /** Queued plays wait for the previous one; instant plays overlap. */
   mode: 'queue' | 'instant';
+  /** Optional giant centre icon with rays/shockwave (gift builder "hero" effects). */
+  hero?: HeroConfig;
 }
 
 const matches = (filter: string, value: string) =>

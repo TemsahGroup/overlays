@@ -1,8 +1,15 @@
 import type { OverlayEffect } from '../../engine/types';
-import type { BurstConfig, EmitterKind } from '../types';
+import type { BurstConfig, EmitterKind, ShapeKind } from '../types';
 import { getSprite, SPRITE_SCALE } from './sprites';
 
 const MAX_PARTICLES = 2500;
+
+/** Shapes that should stay roughly upright and only sway (no tumbling). */
+const UPRIGHT = new Set<ShapeKind>(['rose', 'heart', 'lantern', 'balloon', 'crescent', 'emoji']);
+/** Objects that swing like a pendulum (never turn sideways). */
+const SWINGING = new Set<ShapeKind>(['lantern', 'balloon', 'crescent', 'gem']);
+/** Flat shapes that flip in 3D while falling. */
+const FLIPPING = new Set<ShapeKind>(['confetti', 'petal', 'coin']);
 
 interface Particle {
   sprite: HTMLCanvasElement;
@@ -20,6 +27,9 @@ interface Particle {
   spin: number;
   /** Confetti/petals flip in 3D: scaleY oscillates. */
   flip: boolean;
+  /** Hanging/floating objects swing around rot0 instead of spinning. */
+  pendulum: boolean;
+  rot0: number;
   size: number;
   age: number;
   life: number;
@@ -103,7 +113,8 @@ export class ParticleSystem implements OverlayEffect {
       p.phase += p.swayFreq * dt;
       p.x += (p.vx + Math.cos(p.phase) * p.swayAmp) * dt;
       p.y += p.vy * dt;
-      p.rot += p.spin * dt;
+      if (p.pendulum) p.rot = p.rot0 + Math.sin(p.phase) * 0.22;
+      else p.rot += p.spin * dt;
 
       const offscreen = (p.vy > 0 && p.y > h + p.size * 2) || (p.vy < 0 && p.gravity <= 0 && p.y < -p.size * 2);
       if (p.age >= p.life || offscreen) this.particles.splice(i, 1);
@@ -137,8 +148,9 @@ export class ParticleSystem implements OverlayEffect {
     const shape = pick(config.shapes);
     const size = config.size * rand(0.7, 1.3);
     const lifeBase = config.duration / 1000;
+    const upright = UPRIGHT.has(shape);
     const p: Particle = {
-      sprite: getSprite(shape, pick(config.colors)),
+      sprite: getSprite(shape, pick(config.colors), shape === 'emoji' ? pick(config.emoji?.length ? config.emoji : ['✨']) : undefined),
       x: 0,
       y: 0,
       vx: 0,
@@ -148,14 +160,22 @@ export class ParticleSystem implements OverlayEffect {
       swayAmp: 0,
       swayFreq: rand(1, 2.4),
       phase: rand(0, Math.PI * 2),
-      rot: shape === 'rose' || shape === 'heart' ? rand(-0.35, 0.35) : rand(0, Math.PI * 2),
-      spin: shape === 'rose' || shape === 'heart' ? rand(-0.8, 0.8) : rand(-4, 4),
-      flip: shape === 'confetti' || shape === 'petal',
+      rot: upright ? rand(-0.35, 0.35) : rand(0, Math.PI * 2),
+      spin: upright ? rand(-0.8, 0.8) : rand(-4, 4),
+      flip: FLIPPING.has(shape),
+      pendulum: SWINGING.has(shape),
+      rot0: rand(-0.12, 0.12),
       size,
       age: 0,
       life: lifeBase * rand(0.75, 1),
     };
     this.applyEmitter(p, config.emitter, b.origin, config.origin !== undefined);
+    if (config.speedScale && config.speedScale !== 1) {
+      p.vx *= config.speedScale;
+      p.vy *= config.speedScale;
+      p.gravity *= config.speedScale;
+      p.life /= Math.max(config.speedScale, 0.3);
+    }
     return p;
   }
 

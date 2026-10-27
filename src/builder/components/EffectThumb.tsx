@@ -5,6 +5,8 @@ import type { ShapeKind } from '../../effects/types';
 interface Props {
   shapes: ShapeKind[];
   colors: string[];
+  /** Characters for 'emoji' shapes. */
+  emoji?: string[];
   width?: number;
   height?: number;
 }
@@ -17,7 +19,7 @@ const SPOTS = [
 ];
 
 /** Static gallery preview drawn once with the real particle sprites. */
-export function EffectThumb({ shapes, colors, width = 132, height = 74 }: Props) {
+export function EffectThumb({ shapes, colors, emoji, width = 132, height = 74 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -29,7 +31,8 @@ export function EffectThumb({ shapes, colors, width = 132, height = 74 }: Props)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
     SPOTS.forEach(([x, y, scale], i) => {
-      const sprite = getSprite(shapes[i % shapes.length], colors[i % colors.length] ?? '#ffffff');
+      const shape = shapes[i % shapes.length];
+      const sprite = getSprite(shape, colors[i % colors.length] ?? '#ffffff', shape === 'emoji' ? emoji?.[i % (emoji?.length || 1)] ?? '✨' : undefined);
       const s = 22 * scale * SPRITE_SCALE;
       ctx.save();
       ctx.translate(x * width, y * height);
@@ -37,7 +40,7 @@ export function EffectThumb({ shapes, colors, width = 132, height = 74 }: Props)
       ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
       ctx.restore();
     });
-  }, [shapes, colors, width, height]);
+  }, [shapes, colors, emoji, width, height]);
 
   return <canvas ref={ref} className="effect-thumb" style={{ width, height }} aria-hidden="true" />;
 }

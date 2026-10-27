@@ -1919,3 +1919,57 @@ a.type-card:hover {
     font-size: 20px;
   }
 }
+
+/* Effect gallery filters & badges */
+.chip-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-filter button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-2);
+  cursor: pointer;
+}
+.chip-filter button:hover {
+  color: var(--text);
+}
+.chip-filter button.is-active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--tt-red), #ff6a3d);
+}
+.shell .effect-card {
+  position: relative;
+}
+.new-badge {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  z-index: 1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1a1200;
+  background: linear-gradient(135deg, #ffd166, #ffb703);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.emoji-input {
+  font-size: 22px !important;
+  letter-spacing: 4px;
+}
+
+/* Scrollable nav on narrow screens without a visible scrollbar */
+.shell-nav {
+  scrollbar-width: none;
+}
+.shell-nav::-webkit-scrollbar {
+  display: none;
+}

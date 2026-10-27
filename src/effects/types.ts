@@ -1,8 +1,23 @@
 export type EffectId = 'gift' | 'follow' | 'like' | 'custom';
 export const EFFECT_IDS: EffectId[] = ['gift', 'follow', 'like', 'custom'];
 
-export type ShapeKind = 'rose' | 'petal' | 'heart' | 'circle' | 'star' | 'sparkle' | 'confetti';
-export const SHAPES: ShapeKind[] = ['rose', 'petal', 'heart', 'circle', 'star', 'sparkle', 'confetti'];
+export type ShapeKind =
+  | 'rose'
+  | 'petal'
+  | 'heart'
+  | 'circle'
+  | 'star'
+  | 'sparkle'
+  | 'confetti'
+  | 'lantern'
+  | 'crescent'
+  | 'coin'
+  | 'gem'
+  | 'balloon'
+  /** Any emoji, taken from BurstConfig.emoji. */
+  | 'emoji';
+/** Shapes selectable on their own (lab dashboard / URL). 'emoji' needs characters, so it is not listed. */
+export const SHAPES: ShapeKind[] = ['rose', 'petal', 'heart', 'circle', 'star', 'sparkle', 'confetti', 'lantern', 'crescent', 'coin', 'gem', 'balloon'];
 
 /**
  * How particles enter the screen.
@@ -54,4 +69,8 @@ export interface BurstConfig {
   origin?: { x: number; y: number };
   /** Optional wait before the burst starts, in ms (e.g. firework salvos). */
   delay?: number;
+  /** Characters for the 'emoji' shape (one picked per particle). */
+  emoji?: string[];
+  /** Multiplies launch speed and gravity (0.5 = slow, dreamy motion). */
+  speedScale?: number;
 }

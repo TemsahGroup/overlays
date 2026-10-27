@@ -59,6 +59,7 @@ export function sanitizeEffectSettings(v: unknown, effectId: BuilderEffectId): B
     duration: num(o.duration, d.duration, LIMITS.duration.min, LIMITS.duration.max),
     size: num(o.size, d.size, LIMITS.size.min, LIMITS.size.max),
     intensity,
+    ...(d.emojis !== undefined ? { emojis: str(o.emojis, d.emojis, 60).trim() || d.emojis } : {}),
   };
 }
 

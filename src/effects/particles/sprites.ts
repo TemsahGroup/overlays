@@ -52,23 +52,202 @@ function starPath(ctx: CanvasRenderingContext2D, points: number, outer: number, 
   ctx.closePath();
 }
 
-function drawShape(ctx: CanvasRenderingContext2D, shape: ShapeKind, color: string) {
+const EMOJI_FONT = `"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+
+function drawEmoji(ctx: CanvasRenderingContext2D, char: string, glow: string) {
+  // Emoji renders natively in Chrome/OBS (CEF) on Windows and macOS.
+  ctx.font = `${BOX}px ${EMOJI_FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = glow;
+  ctx.shadowBlur = 14;
+  ctx.fillText(char, SPRITE / 2, SPRITE / 2 + 6);
+}
+
+function drawShape(ctx: CanvasRenderingContext2D, shape: ShapeKind, color: string, emoji = '✨') {
   const glow = (blur: number) => {
     ctx.shadowColor = color;
     ctx.shadowBlur = blur;
   };
 
   switch (shape) {
-    case 'rose': {
-      // Emoji renders natively in Chrome/OBS (CEF) on Windows and macOS.
-      ctx.font = `${BOX}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(255, 40, 90, 0.55)';
-      ctx.shadowBlur = 14;
-      ctx.fillText('🌹', SPRITE / 2, SPRITE / 2 + 6);
+    case 'rose':
+      drawEmoji(ctx, '🌹', 'rgba(255, 40, 90, 0.55)');
       return;
-    }
+    case 'emoji':
+      drawEmoji(ctx, emoji, 'rgba(255, 255, 255, 0.35)');
+      return;
+    case 'lantern':
+      // Ramadan fanous: gold frame, coloured glass, warm inner light.
+      withBox(ctx, () => {
+        const gold = (y0: number, y1: number) => {
+          const g = ctx.createLinearGradient(0, y0, 0, y1);
+          g.addColorStop(0, '#ffe08a');
+          g.addColorStop(0.5, '#d99a1e');
+          g.addColorStop(1, '#8a5a0a');
+          return g;
+        };
+        ctx.shadowColor = 'rgba(255, 190, 60, 0.8)';
+        ctx.shadowBlur = 18;
+        // hanging ring
+        ctx.strokeStyle = '#e8b64a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(50, 7, 5, 0, Math.PI * 2);
+        ctx.stroke();
+        // dome
+        ctx.fillStyle = gold(10, 30);
+        ctx.beginPath();
+        ctx.moveTo(50, 11);
+        ctx.quadraticCurveTo(74, 22, 72, 30);
+        ctx.lineTo(28, 30);
+        ctx.quadraticCurveTo(26, 22, 50, 11);
+        ctx.fill();
+        // glass body with light
+        const glass = ctx.createRadialGradient(50, 55, 2, 50, 55, 26);
+        glass.addColorStop(0, '#fff6c8');
+        glass.addColorStop(0.35, shade(color, 0.35));
+        glass.addColorStop(1, shade(color, -0.25));
+        ctx.fillStyle = glass;
+        ctx.beginPath();
+        ctx.moveTo(30, 30);
+        ctx.lineTo(70, 30);
+        ctx.lineTo(76, 58);
+        ctx.lineTo(66, 80);
+        ctx.lineTo(34, 80);
+        ctx.lineTo(24, 58);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // frame bars
+        ctx.strokeStyle = '#c98a14';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(50, 30);
+        ctx.lineTo(50, 80);
+        ctx.moveTo(24, 58);
+        ctx.lineTo(76, 58);
+        ctx.stroke();
+        // base
+        ctx.fillStyle = gold(80, 94);
+        ctx.beginPath();
+        ctx.moveTo(32, 80);
+        ctx.lineTo(68, 80);
+        ctx.lineTo(60, 92);
+        ctx.lineTo(40, 92);
+        ctx.closePath();
+        ctx.fill();
+      });
+      return;
+    case 'crescent':
+      withBox(ctx, () => {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 16;
+        const g = ctx.createLinearGradient(10, 10, 80, 90);
+        g.addColorStop(0, shade(color, 0.5));
+        g.addColorStop(1, color);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(46, 50, 40, 0, Math.PI * 2);
+        ctx.fill();
+        // cut the inner circle out to leave the crescent
+        ctx.shadowBlur = 0;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(62, 42, 34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = shade(color, 0.6);
+        ctx.translate(26, -2);
+        starPath(ctx, 5, 9, 4);
+        ctx.fill();
+      });
+      return;
+    case 'coin':
+      withBox(ctx, () => {
+        ctx.shadowColor = 'rgba(255, 200, 60, 0.7)';
+        ctx.shadowBlur = 12;
+        const rim = ctx.createLinearGradient(10, 10, 90, 90);
+        rim.addColorStop(0, '#fff1a8');
+        rim.addColorStop(0.5, shade(color, 0));
+        rim.addColorStop(1, shade(color, -0.45));
+        ctx.fillStyle = rim;
+        ctx.beginPath();
+        ctx.arc(50, 50, 44, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        const face = ctx.createLinearGradient(80, 15, 20, 85);
+        face.addColorStop(0, shade(color, 0.45));
+        face.addColorStop(1, shade(color, -0.2));
+        ctx.fillStyle = face;
+        ctx.beginPath();
+        ctx.arc(50, 50, 34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(color, -0.35);
+        starPath(ctx, 5, 18, 8);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(36, 30, 12, 5, -0.7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      return;
+    case 'gem':
+      // Brilliant-cut diamond with shaded facets.
+      withBox(ctx, () => {
+        glow(16);
+        const facet = (pts: number[], amount: number) => {
+          ctx.fillStyle = shade(color, amount);
+          ctx.beginPath();
+          ctx.moveTo(pts[0], pts[1]);
+          for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+          ctx.closePath();
+          ctx.fill();
+        };
+        facet([20, 30, 80, 30, 50, 92], -0.1); // pavilion
+        ctx.shadowBlur = 0;
+        facet([20, 30, 50, 30, 50, 92], -0.35);
+        facet([50, 30, 66, 30, 50, 92], 0.15);
+        facet([32, 12, 68, 12, 80, 30, 20, 30], 0.35); // crown
+        facet([32, 12, 50, 12, 42, 30, 20, 30], 0.6);
+        facet([50, 12, 68, 12, 80, 30, 58, 30], 0.1);
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.translate(-14, -30);
+        starPath(ctx, 4, 9, 2);
+        ctx.fill();
+      });
+      return;
+    case 'balloon':
+      withBox(ctx, () => {
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(50, 76);
+        ctx.bezierCurveTo(44, 84, 56, 90, 48, 99);
+        ctx.stroke();
+        glow(10);
+        const g = ctx.createRadialGradient(38, 26, 4, 50, 40, 40);
+        g.addColorStop(0, shade(color, 0.55));
+        g.addColorStop(0.5, color);
+        g.addColorStop(1, shade(color, -0.35));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(50, 40, 30, 36, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(45, 77);
+        ctx.lineTo(55, 77);
+        ctx.lineTo(50, 71);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.beginPath();
+        ctx.ellipse(38, 24, 7, 11, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      return;
     case 'heart':
       withBox(ctx, () => {
         glow(12);
@@ -155,13 +334,13 @@ function drawShape(ctx: CanvasRenderingContext2D, shape: ShapeKind, color: strin
   }
 }
 
-export function getSprite(shape: ShapeKind, color: string): HTMLCanvasElement {
-  const key = shape === 'rose' ? 'rose' : `${shape}|${color}`;
+export function getSprite(shape: ShapeKind, color: string, emoji?: string): HTMLCanvasElement {
+  const key = shape === 'rose' ? 'rose' : shape === 'emoji' ? `emoji|${emoji}` : `${shape}|${color}`;
   let sprite = cache.get(key);
   if (!sprite) {
     sprite = document.createElement('canvas');
     sprite.width = sprite.height = SPRITE;
-    drawShape(sprite.getContext('2d')!, shape, color);
+    drawShape(sprite.getContext('2d')!, shape, color, emoji);
     cache.set(key, sprite);
   }
   return sprite;

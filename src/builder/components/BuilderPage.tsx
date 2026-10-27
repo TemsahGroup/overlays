@@ -8,7 +8,7 @@ import { AppShell, ColorList, Notice, PageHead, Segmented, StepCard, useToast } 
 import { useI18n, type Translate } from '../../ui/i18n';
 import { ConnectionCard, LinkCard } from '../../ui/LinkCard';
 import type { StringKey } from '../../ui/strings';
-import { BUILDER_EFFECTS } from '../effects';
+import { BUILDER_EFFECTS, EFFECT_CATEGORIES, getBuilderEffect, type EffectCategory } from '../effects';
 import { giftIcon, searchGifts } from '../gifts';
 import { sendTestGift } from '../giftEvents';
 import { buildMappingPlay, resolveConfigPlay } from '../play';
@@ -61,6 +61,7 @@ function BuilderWorkspace({ id }: { id: string | null }) {
   const [readOnly, setReadOnly] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<EffectCategory | 'all'>('all');
   const stageApi = useRef<StageApi | null>(null);
 
   const refreshList = useCallback(() => repository.listMine().then(setMine), []);
@@ -233,15 +234,24 @@ function BuilderWorkspace({ id }: { id: string | null }) {
         </StepCard>
 
         <StepCard n={2} title={t('gift.step2')} disabled={readOnly}>
+          <div className="chip-filter" role="tablist" aria-label={t('gift.step2')}>
+            {(['all', ...EFFECT_CATEGORIES] as const).map((c) => (
+              <button key={c} type="button" role="tab" aria-selected={category === c} className={category === c ? 'is-active' : ''} onClick={() => setCategory(c)}>
+                {t(`cat.${c}` as StringKey)}
+              </button>
+            ))}
+          </div>
           <div className="effect-gallery">
-            {BUILDER_EFFECTS.map((e) => (
+            {BUILDER_EFFECTS.filter((e) => category === 'all' || e.category === category).map((e) => (
               <button key={e.id} type="button" className={`effect-card ${mapping.effectId === e.id ? 'is-active' : ''}`} onClick={() => chooseEffect(e.id)} aria-pressed={mapping.effectId === e.id}>
-                <EffectThumb shapes={e.thumb} colors={mapping.effectId === e.id ? s.colors : e.defaults.colors} />
+                {e.isNew && <span className="new-badge">{t('gift.newBadge')}</span>}
+                <EffectThumb shapes={e.thumb} emoji={e.thumbEmoji} colors={mapping.effectId === e.id ? s.colors : e.defaults.colors} />
                 <span className="effect-name">{effectLabel(t, e.id)}</span>
                 <span className="muted small">{effectDesc(t, e.id)}</span>
               </button>
             ))}
           </div>
+          {getBuilderEffect(mapping.effectId).category === 'hero' || getBuilderEffect(mapping.effectId).hero ? <p className="muted small">✨ {t('gift.heroHint')}</p> : null}
         </StepCard>
 
         <StepCard n={3} title={t('gift.step3')} disabled={readOnly}>
@@ -258,6 +268,13 @@ function BuilderWorkspace({ id }: { id: string | null }) {
               ]}
             />
           </div>
+          {s.emojis !== undefined && (
+            <label className="field">
+              <span>{t('gift.emojis')}</span>
+              <input className="emoji-input" value={s.emojis} onChange={(e) => updateSettings({ emojis: e.target.value })} maxLength={60} />
+              <span className="muted small">{t('gift.emojisHint')}</span>
+            </label>
+          )}
           <div className="field">
             <span>{t('common.colors')}</span>
             <ColorList colors={s.colors} onChange={(colors) => updateSettings({ colors })} />

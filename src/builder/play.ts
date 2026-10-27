@@ -22,6 +22,7 @@ export function buildMappingPlay(mapping: GiftMapping, event: OverlayEvent): Eff
     effectId: 'gift',
     event,
     bursts: getBuilderEffect(mapping.effectId).build(s, event),
+    hero: getBuilderEffect(mapping.effectId).hero?.(s, event),
     message: alert.enabled && alert.text.trim() ? formatAlert(alert.text, event, mapping) : null,
     icon: alert.icon || '🎁',
     accent: s.colors[0] ?? '#ff2d55',

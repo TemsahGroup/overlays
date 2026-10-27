@@ -3,6 +3,7 @@ import type { SnowSettings } from '../config/settings';
 import { OverlayEngine } from '../engine/OverlayEngine';
 import type { EngineStats } from '../engine/types';
 import { ParticleSystem } from '../effects/particles/ParticleSystem';
+import { HeroEffect } from '../effects/hero/HeroEffect';
 import { buildPlay, effectForEvent, type EffectPlay } from '../effects/registry';
 import { EffectScheduler } from '../effects/scheduler';
 import type { EffectId, EffectSettings } from '../effects/types';
@@ -53,6 +54,9 @@ export function OverlayStage({ effects, settings, snow, snowSettings, testBadge,
   useEffect(() => {
     const engine = new OverlayEngine(canvasRef.current!);
     const particles = new ParticleSystem();
+    const hero = new HeroEffect();
+    hero.onImpact = () => engine.shake(14, 450);
+    engine.add(hero);
     engine.add(particles);
     engine.onStats = (s) => live.current.onStats?.(s);
     engine.start();
@@ -60,6 +64,7 @@ export function OverlayStage({ effects, settings, snow, snowSettings, testBadge,
 
     const timers = new Set<ReturnType<typeof setTimeout>>();
     const run = (play: EffectPlay) => {
+      if (play.hero) hero.play(play.hero);
       play.bursts.forEach((b) => particles.play(b));
       if (!play.message) return;
       const key = play.event.id + play.effectId;

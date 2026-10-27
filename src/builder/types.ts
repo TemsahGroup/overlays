@@ -15,7 +15,21 @@ export type BuilderEffectId =
   | 'live-gift'
   | 'live-follow'
   | 'live-like'
-  | 'live-custom';
+  | 'live-custom'
+  // occasions
+  | 'ramadan-lanterns'
+  | 'eid-celebration'
+  // money & luxury
+  | 'money-rain'
+  | 'coin-fountain'
+  | 'diamond-shower'
+  | 'royal-crown'
+  // party
+  | 'balloon-party'
+  | 'confetti-storm'
+  | 'emoji-storm'
+  // big moments
+  | 'gift-hero';
 
 export type Intensity = 'low' | 'medium' | 'high';
 export type Layout = '16:9' | '9:16';
@@ -28,6 +42,8 @@ export interface BuilderEffectSettings {
   /** Base particle size in px. */
   size: number;
   intensity: Intensity;
+  /** Emoji list for emoji-based effects (e.g. "🎉🔥😍"). */
+  emojis?: string;
 }
 
 export interface AlertSettings {

@@ -17,6 +17,9 @@ export class OverlayEngine {
   private resizeObserver: ResizeObserver;
   private frames = 0;
   private statsTime = 0;
+  private shakeUntil = 0;
+  private shakeMs = 0;
+  private shakePx = 0;
 
   onStats?: (stats: EngineStats) => void;
 
@@ -42,6 +45,14 @@ export class OverlayEngine {
       if (e.id === id) e.dispose?.();
       return e.id !== id;
     });
+  }
+
+  /** Shakes everything on the canvas for a moment (skipped for reduced motion). */
+  shake(px: number, ms: number): void {
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    this.shakePx = px;
+    this.shakeMs = ms;
+    this.shakeUntil = performance.now() + ms;
   }
 
   /** Forward a trigger to every effect until one handles it. */
@@ -85,10 +96,17 @@ export class OverlayEngine {
     const time = now / 1000;
 
     this.ctx.clearRect(0, 0, this.width, this.height);
+    const shaking = now < this.shakeUntil;
+    if (shaking) {
+      const k = ((this.shakeUntil - now) / this.shakeMs) * this.shakePx;
+      this.ctx.save();
+      this.ctx.translate((Math.random() * 2 - 1) * k, (Math.random() * 2 - 1) * k);
+    }
     for (const effect of this.effects) {
       effect.update(dt, time);
       effect.draw(this.ctx);
     }
+    if (shaking) this.ctx.restore();
 
     this.frames++;
     if (this.onStats && now - this.statsTime >= 500) {
