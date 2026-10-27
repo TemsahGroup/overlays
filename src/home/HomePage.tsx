@@ -11,6 +11,8 @@ import { goalRepository } from '../goal/repository';
 import type { GoalConfig } from '../goal/types';
 import { leaderboardRepository } from '../leaderboard/repository';
 import type { LeaderboardConfig } from '../leaderboard/types';
+import { timerRepository } from '../timer/repository';
+import type { TimerConfig } from '../timer/types';
 import { AppShell } from '../ui/AppShell';
 import { wheelRepository } from '../wheel/repository';
 import type { WheelConfig } from '../wheel/types';
@@ -33,8 +35,8 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine(), wheelRepository.listMine()] as const;
-    Promise.all(lists).then(([gifts, boards, chats, goals, wheels]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[], WheelConfig[]]) => {
+    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine(), wheelRepository.listMine(), timerRepository.listMine()] as const;
+    Promise.all(lists).then(([gifts, boards, chats, goals, wheels, timers]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[], WheelConfig[], TimerConfig[]]) => {
       if (cancelled) return;
       const list: SavedItem[] = [
         ...gifts.map((c) => ({
@@ -70,6 +72,15 @@ export function HomePage() {
           icon: '🎡',
           name: c.name,
           detail: t('wheel.options', { n: c.segments.length }),
+          paused: !c.enabled,
+          updatedAt: c.updatedAt,
+        })),
+        ...timers.map((c) => ({
+          key: `t-${c.id}`,
+          href: `#/timers/${c.id}`,
+          icon: '⏱️',
+          name: c.name,
+          detail: c.startMinutes < 60 ? t('timer.minutes', { n: c.startMinutes }) : t('timer.hours', { n: Math.round((c.startMinutes / 60) * 10) / 10 }),
           paused: !c.enabled,
           updatedAt: c.updatedAt,
         })),

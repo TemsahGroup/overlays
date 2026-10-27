@@ -4280,3 +4280,299 @@ a.type-card:hover {
   color: var(--muted);
   font-weight: 700;
 }
+
+/* ---------- Gift timer ---------- */
+
+.timer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  --u: 5px;
+  --timer-a: #25f4ee;
+  --timer-b: #fe2c55;
+  font-family: 'Inter', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #fff;
+}
+.timer-card {
+  position: relative;
+  width: calc(var(--u) * 96);
+  padding: calc(var(--u) * 2.4) calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 4);
+  text-align: center;
+  background: linear-gradient(160deg, rgba(14, 16, 28, 0.88), rgba(24, 16, 34, 0.8));
+  border: calc(var(--u) * 0.4) solid color-mix(in srgb, var(--timer-a) 60%, transparent);
+  box-shadow: 0 calc(var(--u) * 1.5) calc(var(--u) * 5) rgba(0, 0, 0, 0.45);
+}
+.timer-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 1.6);
+  height: calc(var(--u) * 7);
+}
+.timer-title {
+  min-width: 0;
+  font-size: calc(var(--u) * 4.4);
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timer-chip,
+.timer-test {
+  flex: none;
+  padding: calc(var(--u) * 0.4) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 1);
+  font-size: calc(var(--u) * 2.4);
+  font-weight: 800;
+}
+.timer-chip {
+  background: rgba(255, 255, 255, 0.16);
+}
+.timer-test {
+  letter-spacing: 0.1em;
+  color: #2a1d00;
+  background: rgba(255, 196, 0, 0.92);
+}
+.timer-time {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 0.6);
+  height: calc(var(--u) * 24);
+}
+.timer-digits {
+  font-size: calc(var(--u) * 19);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--timer-a);
+}
+.timer-over {
+  font-size: calc(var(--u) * 9);
+  font-weight: 900;
+  color: var(--timer-b);
+  animation: goal-glow 1s ease-in-out infinite alternate;
+}
+.timer.is-paused .timer-digits,
+.timer.is-paused .timer-digit {
+  opacity: 0.55;
+}
+.timer.is-warn .timer-digits,
+.timer.is-warn .timer-digit {
+  color: #ff4d4d;
+  animation: timer-warn 1s ease-in-out infinite;
+}
+@keyframes timer-warn {
+  50% {
+    transform: scale(1.06);
+  }
+}
+.timer-rules {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 0.8) calc(var(--u) * 2.4);
+  margin-top: calc(var(--u) * 1);
+  font-size: calc(var(--u) * 3);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* "+30s name" floating up from the time */
+.timer-adds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.timer-add {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  white-space: nowrap;
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 2);
+  border-radius: calc(var(--u) * 3);
+  font-size: calc(var(--u) * 4.2);
+  font-weight: 900;
+  color: #10230f;
+  background: #6bff8f;
+  box-shadow: 0 0 calc(var(--u) * 2) rgba(107, 255, 143, 0.7);
+  animation: timer-add 2.6s ease-out forwards;
+}
+.timer-add small {
+  font-size: 0.7em;
+  font-weight: 700;
+  unicode-bidi: plaintext;
+}
+.timer-add.is-minus {
+  color: #fff;
+  background: #ff4d4d;
+  box-shadow: 0 0 calc(var(--u) * 2) rgba(255, 77, 77, 0.7);
+}
+@keyframes timer-add {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 40%) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -20%) scale(1.05);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -160%) scale(1);
+  }
+}
+
+/* Digital: LCD-style digits */
+.timer--digital .timer-digits {
+  font-family: 'Orbitron', ui-monospace, monospace;
+  text-shadow: 0 0 calc(var(--u) * 2) color-mix(in srgb, var(--timer-a) 70%, transparent);
+}
+
+/* Neon */
+.timer--neon .timer-card {
+  background: rgba(6, 4, 16, 0.86);
+  border-color: var(--timer-a);
+  box-shadow: 0 0 calc(var(--u) * 2.4) var(--timer-a), inset 0 0 calc(var(--u) * 2.4) color-mix(in srgb, var(--timer-a) 35%, transparent);
+}
+.timer--neon .timer-digits {
+  color: #fff;
+  text-shadow:
+    0 0 calc(var(--u) * 1) var(--timer-a),
+    0 0 calc(var(--u) * 3) var(--timer-a),
+    0 0 calc(var(--u) * 6) var(--timer-b);
+}
+.timer--neon .timer-title {
+  color: var(--timer-b);
+  text-shadow: 0 0 calc(var(--u) * 1.4) var(--timer-b);
+}
+
+/* Flip clock */
+.timer--flip .timer-card {
+  background: rgba(14, 14, 18, 0.9);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.timer-digit {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 17);
+  border-radius: calc(var(--u) * 1.6);
+  font-size: calc(var(--u) * 13);
+  font-weight: 900;
+  line-height: 1;
+  color: #f4f4f4;
+  background: linear-gradient(180deg, #2b2b33 0 49.5%, #1d1d23 50.5% 100%);
+  box-shadow: 0 calc(var(--u) * 0.8) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.5);
+  animation: timer-flip 420ms ease-out;
+  transform-origin: 50% 50%;
+}
+.timer-digit::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: calc(var(--u) * 0.35);
+  background: rgba(0, 0, 0, 0.6);
+}
+@keyframes timer-flip {
+  0% {
+    transform: perspective(calc(var(--u) * 60)) rotateX(-80deg);
+    filter: brightness(1.6);
+  }
+}
+.timer-colon {
+  font-size: calc(var(--u) * 11);
+  font-weight: 900;
+  color: var(--timer-a);
+}
+.timer--flip .timer-time {
+  gap: calc(var(--u) * 0.8);
+}
+
+/* Arcade */
+.timer--arcade .timer-card {
+  border-radius: calc(var(--u) * 1);
+  border: calc(var(--u) * 0.6) solid var(--timer-a);
+  background: rgba(4, 4, 12, 0.92);
+}
+.timer--arcade .timer-title,
+.timer--arcade .timer-digits,
+.timer--arcade .timer-over,
+.timer--arcade .timer-rules {
+  font-family: 'Press Start 2P', 'IBM Plex Sans Arabic', ui-monospace, monospace;
+  font-weight: 400;
+}
+.timer--arcade .timer-title {
+  font-size: calc(var(--u) * 3.4);
+  color: var(--timer-a);
+  text-shadow: calc(var(--u) * 0.4) calc(var(--u) * 0.4) 0 var(--timer-b);
+}
+.timer--arcade .timer-digits {
+  font-size: calc(var(--u) * 12);
+  color: #ffd166;
+  text-shadow: calc(var(--u) * 0.8) calc(var(--u) * 0.8) 0 var(--timer-b);
+}
+.timer--arcade .timer-over {
+  font-size: calc(var(--u) * 5.4);
+}
+.timer--arcade .timer-rules {
+  font-size: calc(var(--u) * 2);
+}
+
+/* Minimal: just outlined text, no card */
+.timer--minimal .timer-card {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.timer--minimal .timer-digits,
+.timer--minimal .timer-title,
+.timer--minimal .timer-rules,
+.timer--minimal .timer-over {
+  color: #fff;
+  text-shadow:
+    0 0 calc(var(--u) * 0.5) #000,
+    0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) #000,
+    0 0 calc(var(--u) * 2) rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-add,
+  .timer-digit,
+  .timer.is-warn .timer-digits,
+  .timer.is-warn .timer-digit,
+  .timer-over {
+    animation: none;
+  }
+}
+
+/* Timer picker thumbnails and preview */
+.look-card--timer .look-thumb {
+  height: 110px;
+}
+.side-preview--timer {
+  padding: 14px;
+}
+.side-preview--timer .timer-preview-frame {
+  width: 100%;
+  height: 170px;
+}
+.rule-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}

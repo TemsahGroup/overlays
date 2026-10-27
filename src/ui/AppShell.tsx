@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useI18n } from './i18n';
 import type { StringKey } from './strings';
 
-export type NavKey = 'home' | 'gifts' | 'leaderboards' | 'goal' | 'wheel' | 'chat';
+export type NavKey = 'home' | 'gifts' | 'leaderboards' | 'goal' | 'wheel' | 'timer' | 'chat';
 
 const NAV: { key: NavKey; href: string; icon: string; label: StringKey }[] = [
   { key: 'home', href: '#/', icon: '🏠', label: 'nav.home' },
@@ -10,6 +10,7 @@ const NAV: { key: NavKey; href: string; icon: string; label: StringKey }[] = [
   { key: 'leaderboards', href: '#/leaderboards', icon: '🏆', label: 'nav.leaderboards' },
   { key: 'goal', href: '#/goals', icon: '🎯', label: 'nav.goal' },
   { key: 'wheel', href: '#/wheels', icon: '🎡', label: 'nav.wheel' },
+  { key: 'timer', href: '#/timers', icon: '⏱️', label: 'nav.timer' },
   { key: 'chat', href: '#/chats', icon: '💬', label: 'nav.chat' },
 ];
 

@@ -18,6 +18,8 @@
 //   #/goal/<id>?c=<data>         goal bar OBS overlay (same flags as #/overlay)
 //   #/wheels, #/wheels/<id>      wheel of fortune editor
 //   #/wheel/<id>?c=<data>        wheel OBS overlay (same flags as #/overlay)
+//   #/timers, #/timers/<id>      gift timer editor
+//   #/timer/<id>?c=<data>        gift timer OBS overlay (same flags as #/overlay)
 //
 // Hash routes keep the existing query-parameter app untouched, need no router
 // dependency and work with Vite's relative `base: './'` on any static host.
@@ -50,6 +52,8 @@ export type BuilderRoute =
   | ({ page: 'goal' } & OverlayFlags)
   | { page: 'wheels'; id: string | null }
   | ({ page: 'wheel' } & OverlayFlags)
+  | { page: 'timers'; id: string | null }
+  | ({ page: 'timer' } & OverlayFlags)
   | {
       page: 'overlay';
       id: string;
@@ -65,16 +69,16 @@ export type BuilderRoute =
 
 export function parseHash(hash: string = window.location.hash): BuilderRoute | null {
   if (hash === '#/' || hash === '#') return { page: 'home' };
-  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard|chats|chat|goals|goal|wheels|wheel)(?:\/([^?]*))?(?:\?(.*))?$/);
+  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard|chats|chat|goals|goal|wheels|wheel|timers|timer)(?:\/([^?]*))?(?:\?(.*))?$/);
   if (!m) return null;
   const [, page, rawId, query] = m;
   const id = rawId && isValidId(rawId) ? rawId : null;
-  if (page === 'builder' || page === 'leaderboards' || page === 'chats' || page === 'goals' || page === 'wheels') return { page, id };
+  if (page === 'builder' || page === 'leaderboards' || page === 'chats' || page === 'goals' || page === 'wheels' || page === 'timers') return { page, id };
   if (!id) return null;
   const params = new URLSearchParams(query ?? '');
   const tf = params.get('tf');
   return {
-    page: page === 'leaderboard' || page === 'chat' || page === 'goal' || page === 'wheel' ? page : 'overlay',
+    page: page === 'leaderboard' || page === 'chat' || page === 'goal' || page === 'wheel' || page === 'timer' ? page : 'overlay',
     id,
     portable: params.get('c'),
     demo: params.get('demo') === '1',
@@ -123,4 +127,9 @@ export function goalUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): 
 export function wheelUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
   const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
   return `${appBaseUrl()}#/wheel/${id}${params ? `?${params}` : ''}`;
+}
+
+export function timerUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
+  const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
+  return `${appBaseUrl()}#/timer/${id}${params ? `?${params}` : ''}`;
 }

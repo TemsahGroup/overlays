@@ -20,5 +20,5 @@ export const OVERLAY_TYPES: OverlayType[] = [
   { id: 'goal', icon: '🎯', title: 'type.goal.title', description: 'type.goal.desc', href: '#/goals', accent: '#25f4ee' },
   { id: 'chat', icon: '💬', title: 'type.chat.title', description: 'type.chat.desc', href: '#/chats', accent: '#7c5cff' },
   { id: 'wheel', icon: '🎡', title: 'type.wheel.title', description: 'type.wheel.desc', href: '#/wheels', accent: '#ff8fb1' },
-  { id: 'timer', icon: '⏱️', title: 'type.timer.title', description: 'type.timer.desc', href: null, accent: '#3ddc84' },
+  { id: 'timer', icon: '⏱️', title: 'type.timer.title', description: 'type.timer.desc', href: '#/timers', accent: '#3ddc84' },
 ];
