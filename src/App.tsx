@@ -15,6 +15,8 @@ import { ChatOverlayPage } from './chat/components/ChatOverlayPage';
 import { GoalBuilderPage } from './goal/components/GoalBuilderPage';
 import { GoalOverlayPage } from './goal/components/GoalOverlayPage';
 import { HomePage } from './home/HomePage';
+import { WheelBuilderPage } from './wheel/components/WheelBuilderPage';
+import { WheelOverlayPage } from './wheel/components/WheelOverlayPage';
 import { I18nProvider } from './ui/i18n';
 
 export default function App() {
@@ -58,6 +60,17 @@ export default function App() {
         {builderRoute.page === 'builder' ? <BuilderPage id={builderRoute.id} /> : <LeaderboardBuilderPage id={builderRoute.id} />}
       </I18nProvider>
     );
+  }
+  if (builderRoute?.page === 'wheels') {
+    return (
+      <I18nProvider>
+        <WheelBuilderPage id={builderRoute.id} />
+      </I18nProvider>
+    );
+  }
+  if (builderRoute?.page === 'wheel') {
+    const { page: _page, ...flags } = builderRoute;
+    return <WheelOverlayPage {...flags} />;
   }
   if (builderRoute?.page === 'goals') {
     return (

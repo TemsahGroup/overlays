@@ -12,6 +12,8 @@ import type { GoalConfig } from '../goal/types';
 import { leaderboardRepository } from '../leaderboard/repository';
 import type { LeaderboardConfig } from '../leaderboard/types';
 import { AppShell } from '../ui/AppShell';
+import { wheelRepository } from '../wheel/repository';
+import type { WheelConfig } from '../wheel/types';
 import { useI18n } from '../ui/i18n';
 import type { StringKey } from '../ui/strings';
 
@@ -31,8 +33,8 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine()] as const;
-    Promise.all(lists).then(([gifts, boards, chats, goals]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[]]) => {
+    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine(), wheelRepository.listMine()] as const;
+    Promise.all(lists).then(([gifts, boards, chats, goals, wheels]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[], WheelConfig[]]) => {
       if (cancelled) return;
       const list: SavedItem[] = [
         ...gifts.map((c) => ({
@@ -59,6 +61,15 @@ export function HomePage() {
           icon: metricIcon(c.metric, 'coins'),
           name: c.name,
           detail: `${t(`goal.metric.${c.metric}` as StringKey)} · ${c.target.toLocaleString('en')}`,
+          paused: !c.enabled,
+          updatedAt: c.updatedAt,
+        })),
+        ...wheels.map((c) => ({
+          key: `w-${c.id}`,
+          href: `#/wheels/${c.id}`,
+          icon: '🎡',
+          name: c.name,
+          detail: t('wheel.options', { n: c.segments.length }),
           paused: !c.enabled,
           updatedAt: c.updatedAt,
         })),
