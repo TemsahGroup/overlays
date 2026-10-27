@@ -10,6 +10,8 @@ import { BuilderPage } from './builder/components/BuilderPage';
 import { BuilderOverlayPage } from './builder/components/BuilderOverlayPage';
 import { LeaderboardBuilderPage } from './leaderboard/components/LeaderboardBuilderPage';
 import { LeaderboardOverlayPage } from './leaderboard/components/LeaderboardOverlayPage';
+import { HomePage } from './home/HomePage';
+import { I18nProvider } from './ui/i18n';
 
 export default function App() {
   const route = useMemo(() => parseRoute(), []);
@@ -37,8 +39,22 @@ export default function App() {
     };
   }, [route, builderRoute]);
 
-  if (builderRoute?.page === 'builder') return <BuilderPage id={builderRoute.id} />;
-  if (builderRoute?.page === 'leaderboards') return <LeaderboardBuilderPage id={builderRoute.id} />;
+  // Streamer-facing pages share the language switch; OBS overlays never do.
+  const hasQuery = window.location.search.length > 1;
+  if (builderRoute?.page === 'home' || (!builderRoute && !hasQuery)) {
+    return (
+      <I18nProvider>
+        <HomePage />
+      </I18nProvider>
+    );
+  }
+  if (builderRoute?.page === 'builder' || builderRoute?.page === 'leaderboards') {
+    return (
+      <I18nProvider>
+        {builderRoute.page === 'builder' ? <BuilderPage id={builderRoute.id} /> : <LeaderboardBuilderPage id={builderRoute.id} />}
+      </I18nProvider>
+    );
+  }
   if (builderRoute?.page === 'leaderboard') {
     const { page: _page, ...flags } = builderRoute;
     return <LeaderboardOverlayPage {...flags} />;
@@ -60,7 +76,8 @@ export default function App() {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const settingsFromUrl = [...params.keys()].some((k) => k !== 'snow' && k !== 'demo');
+  // ?lab=1 opens this developer dashboard (the home page now lives at "/").
+  const settingsFromUrl = [...params.keys()].some((k) => k !== 'snow' && k !== 'demo' && k !== 'lab');
   return (
     <Dashboard
       initialSettings={route.settings}

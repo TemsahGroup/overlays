@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LIVE_STATUS_LABEL, NotRunningHelp } from '../../builder/components/LiveStatusPanel';
 import { encodeJson } from '../../builder/repository/portable';
 import { OwnershipError } from '../../builder/repository/types';
 import { leaderboardUrl } from '../../builder/route';
 import { newId } from '../../builder/validate';
-import { STATUS_STALE_MS, subscribeStatus, type StatusMessage } from '../../integrations/tikfinity/eventApi/statusChannel';
+import { AppShell, Notice, PageHead, StepCard, useToast } from '../../ui/AppShell';
+import { useI18n, type Translate } from '../../ui/i18n';
+import { ConnectionCard, LinkCard } from '../../ui/LinkCard';
 import { leaderboardRepository } from '../repository';
 import { createSession, rank, scoreMode, type LeaderboardSession } from '../store';
 import type { LeaderboardConfig, LeaderboardKind } from '../types';
@@ -12,85 +13,104 @@ import { KIND_DEFAULTS, LB_LIMITS, newLeaderboard, toPublicLeaderboard } from '.
 import { DEMO_VIEWERS, feedDemo, testGift, testLikes } from './demo';
 import { LeaderboardView } from './LeaderboardView';
 
-type Status = { kind: 'info' | 'error' | 'ok'; text: string } | null;
 const sameContent = (a: LeaderboardConfig | null, b: LeaderboardConfig) =>
   !!a && JSON.stringify({ ...a, updatedAt: '' }) === JSON.stringify({ ...b, updatedAt: '' });
 const pick = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)];
 
-/** Live status reported by an overlay tab of this browser (read-only). */
-function useReportedStatus(configId: string | null) {
-  const [latest, setLatest] = useState<{ msg: StatusMessage; at: number } | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    setLatest(null);
-    return subscribeStatus((msg) => {
-      if (msg.configId === configId) setLatest({ msg, at: Date.now() });
-    });
-  }, [configId]);
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 3000);
-    return () => clearInterval(t);
-  }, []);
-  return latest && now - latest.at < STATUS_STALE_MS ? latest.msg : null;
+const defaultTitle = (t: Translate, kind: LeaderboardKind) => (kind === 'likers' ? t('lb.defaultLikers') : t('lb.defaultGifters'));
+/** Titles that were never edited by the user (any language) follow the kind. */
+const isDefaultTitle = (title: string) => ['Top Gifters', 'Top Likers', 'أكتر الداعمين', 'أكتر اللايكات'].includes(title);
+
+function freshBoard(t: Translate, kind: LeaderboardKind = 'gifters'): LeaderboardConfig {
+  const board = newLeaderboard(leaderboardRepository.currentOwnerId(), kind);
+  return { ...board, name: defaultTitle(t, kind), title: defaultTitle(t, kind) };
 }
 
 export function LeaderboardBuilderPage({ id }: { id: string | null }) {
-  const [draft, setDraft] = useState<LeaderboardConfig>(() => newLeaderboard(leaderboardRepository.currentOwnerId()));
+  const { t } = useI18n();
+  return (
+    <AppShell active="leaderboards" title={t('lb.title')}>
+      <LeaderboardWorkspace id={id} />
+    </AppShell>
+  );
+}
+
+function LeaderboardWorkspace({ id }: { id: string | null }) {
+  const { t, lang } = useI18n();
+  const toast = useToast();
+  const [draft, setDraft] = useState<LeaderboardConfig>(() => freshBoard(t));
   const [saved, setSaved] = useState<LeaderboardConfig | null>(null);
   const [mine, setMine] = useState<LeaderboardConfig[]>([]);
   const [readOnly, setReadOnly] = useState(false);
-  const [status, setStatus] = useState<Status>(null);
-  const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
   // Preview data is TEST data in memory only — never the live session.
-  const [preview, setPreview] = useState<LeaderboardSession>(() => createSession(Date.now()));
+  const [preview, setPreview] = useState<LeaderboardSession>(() => {
+    let s = createSession(Date.now());
+    for (let i = 0; i < 10; i++) s = feedDemo(s, 'gifters', Date.now() + i);
+    return s;
+  });
 
   const refreshList = useCallback(() => leaderboardRepository.listMine().then(setMine), []);
 
   useEffect(() => {
-    const previous = document.title;
-    document.title = 'Leaderboards · Gift Overlay Builder';
-    return () => {
-      document.title = previous;
-    };
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
-    setStatus(null);
+    setNotice(null);
     setReadOnly(false);
     (async () => {
       if (!id) {
-        setDraft(newLeaderboard(leaderboardRepository.currentOwnerId()));
+        setDraft(freshBoard(t));
         setSaved(null);
         return;
       }
       const found = await leaderboardRepository.get(id);
       if (cancelled) return;
       if (!found) {
-        setStatus({ kind: 'error', text: 'Leaderboard not found in this browser’s storage.' });
+        setNotice({ kind: 'error', text: t('common.notFound') });
         return;
       }
       setDraft(found);
       setSaved(found);
       if (found.ownerId !== leaderboardRepository.currentOwnerId()) {
         setReadOnly(true);
-        setStatus({ kind: 'info', text: 'This leaderboard belongs to another owner. Duplicate it to make your own copy.' });
+        setNotice({ kind: 'info', text: t('common.readOnly') });
       }
     })();
     refreshList();
     return () => {
       cancelled = true;
     };
+    // t only provides defaults for a brand-new board; switching language must not reset edits.
   }, [id, refreshList]);
 
-  const reported = useReportedStatus(saved?.id ?? null);
-  const liveStatus = reported?.state.status ?? 'disconnected';
+  // A brand-new board whose title was never edited follows the UI language.
+  useEffect(() => {
+    if (saved) return;
+    setDraft((d) => ({
+      ...d,
+      title: isDefaultTitle(d.title) ? defaultTitle(t, d.kind) : d.title,
+      name: isDefaultTitle(d.name) ? defaultTitle(t, d.kind) : d.name,
+    }));
+  }, [t, saved]);
+
   const dirty = !sameContent(saved, draft);
+  const now = () => Date.now();
+
+  const fill = (kind: LeaderboardKind) => {
+    let s = createSession(now());
+    for (let i = 0; i < 12; i++) s = feedDemo(s, kind, now() + i);
+    setPreview(s);
+  };
 
   const setKind = (kind: LeaderboardKind) => {
     const d = KIND_DEFAULTS[kind];
-    setDraft((c) => ({ ...c, kind, title: d.title, name: c.name === KIND_DEFAULTS[c.kind].title ? d.title : c.name, colors: [...d.colors] as [string, string] }));
-    setPreview(createSession(Date.now()));
+    setDraft((c) => ({
+      ...c,
+      kind,
+      title: isDefaultTitle(c.title) ? defaultTitle(t, kind) : c.title,
+      name: isDefaultTitle(c.name) ? defaultTitle(t, kind) : c.name,
+      colors: [...d.colors] as [string, string],
+    }));
+    fill(kind);
   };
 
   const save = async () => {
@@ -98,19 +118,21 @@ export function LeaderboardBuilderPage({ id }: { id: string | null }) {
       const record = await leaderboardRepository.save(draft);
       setDraft(record);
       setSaved(record);
-      setStatus({ kind: 'ok', text: 'Saved.' });
+      setNotice(null);
+      toast(t('common.savedToast'));
       refreshList();
       if (id !== record.id) window.location.hash = `#/leaderboards/${record.id}`;
     } catch (e) {
-      setStatus({ kind: 'error', text: e instanceof OwnershipError ? e.message : 'Could not save (storage unavailable?).' });
+      toast(e instanceof OwnershipError ? t('common.ownerError') : t('common.saveError'), 'error');
     }
   };
 
   const duplicate = () => {
-    const now = new Date().toISOString();
-    setDraft({ ...draft, id: newId(), ownerId: leaderboardRepository.currentOwnerId(), name: `${draft.name} (copy)`, createdAt: now, updatedAt: now, enabled: true });
+    const ts = new Date().toISOString();
+    setDraft({ ...draft, id: newId(), ownerId: leaderboardRepository.currentOwnerId(), name: `${draft.name} (2)`, createdAt: ts, updatedAt: ts, enabled: true });
     setSaved(null);
     setReadOnly(false);
+    setNotice({ kind: 'info', text: t('common.copyCreated') });
   };
 
   const toggleEnabled = async () => {
@@ -122,266 +144,182 @@ export function LeaderboardBuilderPage({ id }: { id: string | null }) {
   };
 
   const remove = async () => {
-    if (!saved || !window.confirm(`Delete “${saved.name}”?`)) return;
+    if (!saved || !window.confirm(t('lb.confirmDelete', { name: saved.name }))) return;
     await leaderboardRepository.remove(saved.id);
     window.location.hash = '#/leaderboards';
     refreshList();
   };
 
-  const url = saved ? leaderboardUrl(saved.id, encodeJson(toPublicLeaderboard(saved))) : null;
-  const copy = async () => {
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      window.prompt('Copy this URL:', url);
-    }
-  };
-
-  const now = () => Date.now();
+  const url = saved ? leaderboardUrl(saved.id, encodeJson(toPublicLeaderboard(saved)), lang) : null;
+  const storageUrl = saved ? leaderboardUrl(saved.id, undefined, lang) : null;
 
   return (
-    <div className="dashboard builder">
-      <aside className="panel">
-        <header className="panel-header">
-          <div>
-            <h1>Leaderboards</h1>
-            <p className="sub">
-              <a href="#/builder">🎁 Gift effects</a> · <b>🏆 Leaderboards</b> · <a href="./">LIVE Overlay Effects ↗</a>
-            </p>
-          </div>
-          <span className="chip chip--mock" title={leaderboardRepository.label}>LOCAL</span>
-        </header>
+    <div className="workspace">
+      <div className="editor">
+        <PageHead icon="🏆" title={t('lb.title')} subtitle={t('lb.subtitle')} />
 
-        {status && <p className={`notice notice--${status.kind}`}>{status.text}</p>}
+        <label className="name-field">
+          <span>{t('common.name')}</span>
+          <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={60} disabled={readOnly} />
+        </label>
 
-        <fieldset className="section" disabled={readOnly}>
-          <h2>1 · Type</h2>
-          <div className="seg seg--inline">
+        {notice && <Notice kind={notice.kind}>{notice.text}</Notice>}
+
+        <StepCard n={1} title={t('lb.step1')} disabled={readOnly}>
+          <div className="choice-grid">
             {(['gifters', 'likers'] as LeaderboardKind[]).map((k) => (
-              <button key={k} type="button" className={draft.kind === k ? 'is-active' : ''} onClick={() => setKind(k)}>
-                {k === 'gifters' ? '🏆 Top Gifters' : '❤️ Top Likers'}
+              <button key={k} type="button" className={`choice ${draft.kind === k ? 'is-active' : ''}`} onClick={() => setKind(k)} aria-pressed={draft.kind === k}>
+                <span className="choice-icon">{k === 'gifters' ? '🏆' : '❤️'}</span>
+                <b>{k === 'gifters' ? t('lb.gifters') : t('lb.likers')}</b>
+                <span className="muted small">{k === 'gifters' ? t('lb.gifters.hint') : t('lb.likers.hint')}</span>
               </button>
             ))}
           </div>
-          <p className="hint">
-            {draft.kind === 'gifters'
-              ? 'Ranked by coin value (TikFinity diamondCount × count). If a gift arrives without a value, the board ranks by number of gifts instead.'
-              : 'Ranked by likes. Totals are approximate: TikTok does not send every like event on busy streams.'}
-          </p>
-        </fieldset>
+        </StepCard>
 
-        <fieldset className="section" disabled={readOnly}>
-          <h2>2 · Look</h2>
-          <div className="field-pair">
-            <label className="field">
-              <span>Name (for you)</span>
-              <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={60} />
-            </label>
-            <label className="field">
-              <span>Title on stream</span>
-              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={40} />
-            </label>
-          </div>
+        <StepCard n={2} title={t('lb.step2')} disabled={readOnly}>
+          <label className="field">
+            <span>{t('lb.titleOnStream')}</span>
+            <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={40} />
+          </label>
           <label className="field">
             <span className="field-row">
-              <span>Rows shown</span>
-              <output>Top {draft.topN}</output>
+              <span>{t('lb.rows')}</span>
+              <output>{t('lb.rowsValue', { n: draft.topN })}</output>
             </span>
             <input type="range" min={LB_LIMITS.topN.min} max={LB_LIMITS.topN.max} value={draft.topN} onChange={(e) => setDraft({ ...draft, topN: Number(e.target.value) })} />
           </label>
-          <div className="field">
-            <span>Colors</span>
-            <div className="colors">
-              {draft.colors.map((c, i) => (
-                <span key={i} className="color">
-                  <input
-                    type="color"
-                    value={c}
-                    aria-label={i === 0 ? 'Accent color' : 'Second color'}
-                    onChange={(e) => setDraft({ ...draft, colors: (i === 0 ? [e.target.value, draft.colors[1]] : [draft.colors[0], e.target.value]) as [string, string] })}
-                  />
-                </span>
+          <div className="field-pair">
+            {([0, 1] as const).map((i) => (
+              <label key={i} className="field field--color">
+                <span>{i === 0 ? t('lb.accent') : t('lb.accent2')}</span>
+                <input
+                  type="color"
+                  value={draft.colors[i]}
+                  onChange={(e) => setDraft({ ...draft, colors: (i === 0 ? [e.target.value, draft.colors[1]] : [draft.colors[0], e.target.value]) as [string, string] })}
+                />
+              </label>
+            ))}
+          </div>
+          <details className="disclosure">
+            <summary>{t('common.advanced')}</summary>
+            <label className="field">
+              <span className="field-row">
+                <span>{t('lb.gap')}</span>
+                <output>{t('lb.hours', { n: draft.sessionGapHours })}</output>
+              </span>
+              <input
+                type="range"
+                min={LB_LIMITS.sessionGapHours.min}
+                max={LB_LIMITS.sessionGapHours.max}
+                value={draft.sessionGapHours}
+                onChange={(e) => setDraft({ ...draft, sessionGapHours: Number(e.target.value) })}
+              />
+              <span className="muted small">{t('lb.gapHint')}</span>
+            </label>
+            <p className="muted small">{t('lb.resetHint', { setup: '&setup=1' })}</p>
+          </details>
+        </StepCard>
+
+        <section className="card">
+          <div className="card-row">
+            <h2 className="card-title">📁 {t('lb.saved')}</h2>
+            <a className="btn btn--small" href="#/leaderboards" onClick={() => id === null && setDraft(freshBoard(t))}>
+              ＋ {t('common.new')}
+            </a>
+          </div>
+          {mine.length ? (
+            <ul className="config-list">
+              {mine.map((c) => (
+                <li key={c.id} className={c.id === draft.id ? 'is-active' : ''}>
+                  <a href={`#/leaderboards/${c.id}`}>
+                    <span className="gift-icon">{c.kind === 'likers' ? '❤️' : '🏆'}</span>
+                    <span className="config-name">{c.name}</span>
+                    <span className="muted small">
+                      {c.kind === 'likers' ? t('lb.likers') : t('lb.gifters')} · {t('lb.rowsValue', { n: c.topN })}
+                      {!c.enabled && ' · ⏸'}
+                    </span>
+                  </a>
+                </li>
               ))}
+            </ul>
+          ) : (
+            <p className="muted">{t('common.empty')}</p>
+          )}
+          <p className="muted small">💾 {t('common.localHint')}</p>
+        </section>
+      </div>
+
+      <aside className="side">
+        <section className="card preview-card">
+          <h2 className="card-title">👀 {t('common.preview')}</h2>
+          <div className="side-preview side-preview--board">
+            <div className="lb-preview-frame">
+              <LeaderboardView
+                title={draft.title}
+                kind={draft.kind}
+                rows={rank(preview, draft.kind, draft.topN)}
+                mode={scoreMode(preview)}
+                colors={draft.colors}
+                topN={draft.topN}
+                test
+                lang={lang}
+              />
             </div>
           </div>
-          <label className="field">
-            <span className="field-row">
-              <span>New stream after a break of</span>
-              <output>{draft.sessionGapHours} h</output>
-            </span>
-            <input
-              type="range"
-              min={LB_LIMITS.sessionGapHours.min}
-              max={LB_LIMITS.sessionGapHours.max}
-              value={draft.sessionGapHours}
-              onChange={(e) => setDraft({ ...draft, sessionGapHours: Number(e.target.value) })}
-            />
-            <span className="hint">The board starts empty when no gift/like arrived for this long (TikFinity has no “stream started” event).</span>
-          </label>
-        </fieldset>
-
-        <section className="section">
-          <h2>3 · Preview with test data</h2>
           <div className="row">
             {draft.kind === 'gifters' ? (
               <>
                 <button type="button" className="btn" onClick={() => setPreview((s) => testGift(s, pick(DEMO_VIEWERS), 1, now()))}>
-                  + small gift (1)
+                  {t('lb.addSmall')}
                 </button>
                 <button type="button" className="btn" onClick={() => setPreview((s) => testGift(s, pick(DEMO_VIEWERS), 99, now()))}>
-                  + big gift (99)
+                  {t('lb.addBig')}
                 </button>
               </>
             ) : (
               <button type="button" className="btn" onClick={() => setPreview((s) => testLikes(s, pick(DEMO_VIEWERS), 15, now()))}>
-                + 15 likes
+                {t('lb.addLikes')}
               </button>
             )}
           </div>
           <div className="row">
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() =>
-                setPreview((s) => {
-                  let next = s;
-                  for (let i = 0; i < 12; i++) next = feedDemo(next, draft.kind, now() + i);
-                  return next;
-                })
-              }
-            >
-              ▶ Fill with test data
+            <button type="button" className="btn primary" onClick={() => fill(draft.kind)}>
+              ▶ {t('lb.fill')}
             </button>
             <button type="button" className="btn" onClick={() => setPreview(createSession(now()))}>
-              Clear
+              {t('lb.clear')}
             </button>
           </div>
-          <p className="hint">Preview data is TEST data and stays in this page only. It never reaches a live leaderboard.</p>
+          <p className="muted small">{t('lb.previewHint')}</p>
         </section>
 
-        <section className="section">
-          <h2>4 · Save & overlay URL</h2>
+        <section className="card save-card">
           {readOnly ? (
-            <button type="button" className="btn primary" onClick={duplicate}>
-              Duplicate as my leaderboard
+            <button type="button" className="btn primary btn--big" onClick={duplicate}>
+              {t('common.duplicate')}
             </button>
           ) : (
-            <div className="row">
-              <button type="button" className="btn primary" onClick={save} disabled={!dirty && !!saved}>
-                {saved ? (dirty ? '💾 Save changes' : '✓ Saved') : '💾 Save leaderboard'}
-              </button>
-              {saved && (
-                <button type="button" className="btn" onClick={toggleEnabled}>
-                  {saved.enabled ? 'Disable' : 'Enable'}
-                </button>
-              )}
-            </div>
+            <button type="button" className={`btn btn--big ${dirty || !saved ? 'primary' : ''}`} onClick={save} disabled={!dirty && !!saved}>
+              {saved ? (dirty ? `💾 ${t('common.saveChanges')}` : `✓ ${t('common.saved')}`) : `💾 ${t('common.save')}`}
+            </button>
           )}
-          {saved && dirty && <p className="notice notice--info">Unsaved changes — the link below still uses the last saved version.</p>}
-          {url ? (
-            <div className="url-row">
-              <span className="hint">
-                <b>OBS link</b> — add it as its own Browser Source (e.g. 500 × 700). Copy again after each save.
-              </span>
-              <code>{url}</code>
-              <div className="row">
-                <button type="button" className="btn" onClick={copy}>
-                  {copied ? '✓ Copied' : 'Copy overlay URL'}
-                </button>
-                <a className="btn" href={`${url}&demo=1`} target="_blank" rel="noreferrer">
-                  Open with test data ↗
-                </a>
-              </div>
-            </div>
-          ) : (
-            <p className="hint">Save the leaderboard to get its OBS link.</p>
-          )}
+          {saved && !saved.enabled && <Notice kind="error">{t('common.paused')}</Notice>}
           {saved && !readOnly && (
-            <button type="button" className="btn btn--danger" onClick={remove}>
-              Delete leaderboard
-            </button>
+            <div className="row row--quiet">
+              <button type="button" className="btn btn--small" onClick={toggleEnabled}>
+                {saved.enabled ? `⏸ ${t('common.disable')}` : `▶ ${t('common.enable')}`}
+              </button>
+              <button type="button" className="btn btn--small btn--danger" onClick={remove}>
+                🗑 {t('common.delete')}
+              </button>
+            </div>
           )}
         </section>
 
-        <section className="section">
-          <h2>My leaderboards</h2>
-          <ul className="config-list">
-            {mine.map((c) => (
-              <li key={c.id} className={c.id === draft.id ? 'is-active' : ''}>
-                <a href={`#/leaderboards/${c.id}`}>
-                  <span className="gift-icon">{c.kind === 'likers' ? '❤️' : '🏆'}</span>
-                  <span className="config-name">{c.name}</span>
-                  <span className="hint">
-                    {c.kind === 'likers' ? 'Top Likers' : 'Top Gifters'} · top {c.topN}
-                    {!c.enabled && ' · disabled'}
-                  </span>
-                </a>
-              </li>
-            ))}
-            {!mine.length && <li className="hint">No saved leaderboards yet.</li>}
-          </ul>
-          <a className="btn" href="#/leaderboards" onClick={() => id === null && setDraft(newLeaderboard(leaderboardRepository.currentOwnerId()))}>
-            ＋ New leaderboard
-          </a>
-        </section>
-
-        <section className="section">
-          <h2>OBS setup</h2>
-          <ol className="steps">
-            <li>Save, then copy the overlay URL.</li>
-            <li>
-              OBS → Sources → <b>+</b> → <b>Browser</b>, paste the URL, size about <b>500 × 700</b>, and place it where you like.
-            </li>
-            <li>
-              Add <code>&amp;setup=1</code> to see the TikFinity status, the scoring mode and a <b>Reset</b> button (click it with OBS
-              “Interact”). Remove it before streaming.
-            </li>
-            <li>
-              Add <code>&amp;demo=1</code> to check the layout with TEST data (no live connection in that mode).
-            </li>
-            <li>The board keeps its scores if OBS reloads, and starts empty after the break set above.</li>
-          </ol>
-        </section>
-
-        <section className="section">
-          <h2>TikFinity connection</h2>
-          <div className={`conn conn--${liveStatus}`}>
-            <span className="conn-dot" />
-            <b>{LIVE_STATUS_LABEL[liveStatus]}</b>
-            <span className={`chip ${reported?.state.verifiedGiftAt ? 'chip--tikfinity' : 'chip--mock'}`}>
-              {reported?.state.verifiedGiftAt ? 'LIVE GIFTS VERIFIED' : 'NOT VERIFIED LIVE'}
-            </span>
-          </div>
-          <p className="hint">
-            {reported
-              ? reported.state.detail
-              : 'No overlay of this leaderboard is open in this browser. The live connection runs only inside the overlay (OBS), with TikFinity Desktop on the same computer.'}
-          </p>
-          {reported && (liveStatus === 'error' || liveStatus === 'disconnected') && <NotRunningHelp />}
-        </section>
+        <LinkCard url={url} storageUrl={storageUrl} dirty={!!saved && dirty} size={t('lb.size')} />
+        <ConnectionCard configId={saved?.id ?? null} />
       </aside>
-
-      <main className="preview">
-        <div className="preview-bar">
-          <span className="hint">Preview · TEST data · {draft.kind === 'gifters' ? `ranking by ${scoreMode(preview) === 'coins' ? 'coin value' : 'gift count'}` : 'ranking by likes'}</span>
-        </div>
-        <div className="preview-area">
-          <div className="lb-preview-frame">
-            <LeaderboardView
-              title={draft.title}
-              kind={draft.kind}
-              rows={rank(preview, draft.kind, draft.topN)}
-              mode={scoreMode(preview)}
-              colors={draft.colors}
-              topN={draft.topN}
-              test
-            />
-          </div>
-        </div>
-      </main>
     </div>
   );
 }

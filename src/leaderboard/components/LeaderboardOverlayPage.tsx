@@ -24,7 +24,7 @@ type Load = { state: 'loading' } | { state: 'ready'; config: PublicLeaderboardCo
  * bus); the session is persisted in this browser so an OBS refresh keeps it.
  * Demo mode (?demo=1) uses an in-memory session that is never saved.
  */
-export function LeaderboardOverlayPage({ id, portable, demo, live, setup, diag, eventApiUrl }: OverlayFlags) {
+export function LeaderboardOverlayPage({ id, portable, demo, live, setup, diag, eventApiUrl, lang }: OverlayFlags) {
   const [load, setLoad] = useState<Load>({ state: 'loading' });
   const [session, setSession] = useState<LeaderboardSession>(() => (demo ? createSession(Date.now()) : loadSession(id, Date.now())));
   const [adapter, setAdapter] = useState<TikFinityEventApiAdapter | null>(null);
@@ -145,6 +145,7 @@ export function LeaderboardOverlayPage({ id, portable, demo, live, setup, diag, 
           colors={config.colors}
           topN={config.topN}
           test={demo}
+          lang={lang ?? 'en'}
         />
       ) : (
         <div className="overlay-notice">This leaderboard has been disabled by its owner.</div>

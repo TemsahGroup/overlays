@@ -4,7 +4,11 @@ import { DEFAULT_SNOW } from '../../config/settings';
 import { DEFAULT_SETTINGS } from '../../effects/settings';
 import { makeEventId } from '../../events/eventBus';
 import type { GiftEvent } from '../../events/types';
-import { BUILDER_EFFECTS, getBuilderEffect } from '../effects';
+import { AppShell, ColorList, Notice, PageHead, Segmented, StepCard, useToast } from '../../ui/AppShell';
+import { useI18n, type Translate } from '../../ui/i18n';
+import { ConnectionCard, LinkCard } from '../../ui/LinkCard';
+import type { StringKey } from '../../ui/strings';
+import { BUILDER_EFFECTS } from '../effects';
 import { giftIcon, searchGifts } from '../gifts';
 import { sendTestGift } from '../giftEvents';
 import { buildMappingPlay, resolveConfigPlay } from '../play';
@@ -12,20 +16,21 @@ import { encodePortable } from '../repository/portable';
 import { repository } from '../repository/localRepository';
 import { OwnershipError } from '../repository/types';
 import { overlayUrl } from '../route';
-import { SCHEMA_VERSION, type BuilderEffectId, type GiftMapping, type Intensity, type OverlayConfig } from '../types';
+import { SCHEMA_VERSION, type BuilderEffectId, type GiftMapping, type Intensity, type Layout, type OverlayConfig } from '../types';
 import { defaultMapping, LIMITS, newId, sanitizeEffectSettings, toPublic } from '../validate';
 import { EffectThumb } from './EffectThumb';
-import { SetupGuide } from './SetupGuide';
 
-function newConfig(): OverlayConfig {
+function newConfig(t: Translate): OverlayConfig {
   const now = new Date().toISOString();
+  const mapping = defaultMapping();
+  mapping.alertSettings.text = t('gift.defaultAlert');
   return {
     schemaVersion: SCHEMA_VERSION,
     id: newId(),
     ownerId: repository.currentOwnerId(),
-    name: 'My gift overlay',
+    name: t('gift.defaultName'),
     layout: '16:9',
-    mappings: [defaultMapping()],
+    mappings: [mapping],
     enabled: true,
     createdAt: now,
     updatedAt: now,
@@ -35,47 +40,47 @@ function newConfig(): OverlayConfig {
 const sameContent = (a: OverlayConfig | null, b: OverlayConfig) =>
   !!a && JSON.stringify({ ...a, updatedAt: '' }) === JSON.stringify({ ...b, updatedAt: '' });
 
-type Status = { kind: 'info' | 'error' | 'ok'; text: string } | null;
+const effectLabel = (t: Translate, id: BuilderEffectId) => t(`effect.${id}` as StringKey);
+const effectDesc = (t: Translate, id: BuilderEffectId) => t(`effect.${id}.desc` as StringKey);
 
 export function BuilderPage({ id }: { id: string | null }) {
-  const [draft, setDraft] = useState<OverlayConfig>(newConfig);
+  const { t } = useI18n();
+  return (
+    <AppShell active="gifts" title={t('gift.title')}>
+      <BuilderWorkspace id={id} />
+    </AppShell>
+  );
+}
+
+function BuilderWorkspace({ id }: { id: string | null }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [draft, setDraft] = useState<OverlayConfig>(() => newConfig(t));
   const [saved, setSaved] = useState<OverlayConfig | null>(null);
   const [mine, setMine] = useState<OverlayConfig[]>([]);
   const [readOnly, setReadOnly] = useState(false);
-  const [status, setStatus] = useState<Status>(null);
+  const [notice, setNotice] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
   const [query, setQuery] = useState('');
-  const [copied, setCopied] = useState<string | null>(null);
   const stageApi = useRef<StageApi | null>(null);
 
   const refreshList = useCallback(() => repository.listMine().then(setMine), []);
 
-  useEffect(() => {
-    const previous = document.title;
-    document.title = 'Gift Overlay Builder';
-    return () => {
-      document.title = previous;
-    };
-  }, []);
-
   // Load the configuration named in the route (or start a fresh one).
   useEffect(() => {
     let cancelled = false;
-    setStatus(null);
+    setNotice(null);
     setReadOnly(false);
     (async () => {
       if (!id) {
-        const fresh = newConfig();
-        if (!cancelled) {
-          setDraft(fresh);
-          setSaved(null);
-        }
+        setDraft(newConfig(t));
+        setSaved(null);
         return;
       }
       const found = await repository.get(id);
       if (cancelled) return;
       if (!found) {
-        setStatus({ kind: 'error', text: 'Configuration not found in this browser’s storage.' });
-        setDraft(newConfig());
+        setNotice({ kind: 'error', text: t('common.notFound') });
+        setDraft(newConfig(t));
         setSaved(null);
         return;
       }
@@ -83,26 +88,24 @@ export function BuilderPage({ id }: { id: string | null }) {
       setSaved(found);
       if (found.ownerId !== repository.currentOwnerId()) {
         setReadOnly(true);
-        setStatus({ kind: 'info', text: 'This configuration belongs to another owner. Duplicate it to make your own copy.' });
+        setNotice({ kind: 'info', text: t('common.readOnly') });
       }
     })();
     refreshList();
     return () => {
       cancelled = true;
     };
+    // t is only used for defaults of a brand-new draft; switching language must not reset edits.
   }, [id, refreshList]);
 
   const mapping = draft.mappings[0];
-  const effect = getBuilderEffect(mapping.effectId);
+  const s = mapping.effectSettings;
   const dirty = !sameContent(saved, draft);
 
   const updateMapping = (patch: Partial<GiftMapping>) =>
     setDraft((d) => ({ ...d, mappings: [{ ...d.mappings[0], ...patch }, ...d.mappings.slice(1)] }));
-  const updateSettings = (patch: Partial<GiftMapping['effectSettings']>) =>
-    updateMapping({ effectSettings: { ...mapping.effectSettings, ...patch } });
-  const updateAlert = (patch: Partial<GiftMapping['alertSettings']>) =>
-    updateMapping({ alertSettings: { ...mapping.alertSettings, ...patch } });
-
+  const updateSettings = (patch: Partial<GiftMapping['effectSettings']>) => updateMapping({ effectSettings: { ...mapping.effectSettings, ...patch } });
+  const updateAlert = (patch: Partial<GiftMapping['alertSettings']>) => updateMapping({ alertSettings: { ...mapping.alertSettings, ...patch } });
   const chooseEffect = (effectId: BuilderEffectId) =>
     updateMapping({ effectId, effectSettings: { ...sanitizeEffectSettings({}, effectId), intensity: mapping.effectSettings.intensity } });
 
@@ -121,28 +124,39 @@ export function BuilderPage({ id }: { id: string | null }) {
     };
     stageApi.current?.play(buildMappingPlay(mapping, event));
   };
-
   const test = () => sendTestGift(mapping.selectedGiftName, 'test_viewer', 1, mapping.selectedGiftId ?? undefined);
+
+  // Play once when the effect changes, so choosing feels immediate.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const timer = setTimeout(preview, 150);
+    return () => clearTimeout(timer);
+  }, [mapping.effectId]);
 
   const save = async () => {
     try {
       const record = await repository.save(draft);
       setDraft(record);
       setSaved(record);
-      setStatus({ kind: 'ok', text: 'Saved.' });
+      setNotice(null);
+      toast(t('common.savedToast'));
       refreshList();
       if (id !== record.id) window.location.hash = `#/builder/${record.id}`;
     } catch (e) {
-      setStatus({ kind: 'error', text: e instanceof OwnershipError ? e.message : 'Could not save (storage unavailable?).' });
+      toast(e instanceof OwnershipError ? t('common.ownerError') : t('common.saveError'), 'error');
     }
   };
 
   const duplicate = () => {
     const now = new Date().toISOString();
-    setDraft({ ...draft, id: newId(), ownerId: repository.currentOwnerId(), name: `${draft.name} (copy)`, createdAt: now, updatedAt: now, enabled: true });
+    setDraft({ ...draft, id: newId(), ownerId: repository.currentOwnerId(), name: `${draft.name} (2)`, createdAt: now, updatedAt: now, enabled: true });
     setSaved(null);
     setReadOnly(false);
-    setStatus({ kind: 'info', text: 'Copy created. Save it to keep it.' });
+    setNotice({ kind: 'info', text: t('common.copyCreated') });
   };
 
   const toggleEnabled = async () => {
@@ -154,67 +168,32 @@ export function BuilderPage({ id }: { id: string | null }) {
   };
 
   const remove = async () => {
-    if (!saved || !window.confirm(`Delete “${saved.name}”? Its overlay links will stop working in this browser.`)) return;
+    if (!saved || !window.confirm(t('gift.confirmDelete', { name: saved.name }))) return;
     await repository.remove(saved.id);
     window.location.hash = '#/builder';
     refreshList();
   };
 
-  const copy = async (text: string, key: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(key);
-      setTimeout(() => setCopied(null), 1400);
-    } catch {
-      window.prompt('Copy this URL:', text);
-    }
-  };
-
-  const portableUrl = saved ? overlayUrl(saved.id, encodePortable(toPublic(saved))) : null;
-  const localUrl = saved ? overlayUrl(saved.id) : null;
   const gifts = searchGifts(query);
   const customGift = query.trim() && !gifts.some((g) => g.name.toLowerCase() === query.trim().toLowerCase()) ? query.trim() : null;
-  const s = mapping.effectSettings;
+  const portableUrl = saved ? overlayUrl(saved.id, encodePortable(toPublic(saved))) : null;
+  const storageUrl = saved ? overlayUrl(saved.id) : null;
 
   return (
-    <div className="dashboard builder">
-      <aside className="panel">
-        <header className="panel-header">
-          <div>
-            <h1>Gift Overlay Builder</h1>
-            <p className="sub">
-              <b>🎁 Gift effects</b> · <a href="#/leaderboards">🏆 Leaderboards</a> · <a href="./">LIVE Overlay Effects ↗</a>
-            </p>
-          </div>
-          <span className="chip chip--mock" title={repository.capabilities.label}>LOCAL</span>
-        </header>
+    <div className="workspace">
+      <div className="editor">
+        <PageHead icon="🎁" title={t('gift.title')} subtitle={t('gift.subtitle')} />
 
-        {status && <p className={`notice notice--${status.kind}`}>{status.text}</p>}
+        <label className="name-field">
+          <span>{t('common.name')}</span>
+          <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={60} disabled={readOnly} />
+        </label>
 
-        <fieldset className="section" disabled={readOnly}>
-          <h2>1 · Overlay</h2>
-          <div className="field-pair field-pair--wide">
-            <label className="field">
-              <span>Name</span>
-              <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={60} />
-            </label>
-            <div className="field">
-              <span>Layout</span>
-              <div className="seg seg--inline">
-                {(['16:9', '9:16'] as const).map((l) => (
-                  <button key={l} type="button" className={draft.layout === l ? 'is-active' : ''} onClick={() => setDraft({ ...draft, layout: l })}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </fieldset>
+        {notice && <Notice kind={notice.kind}>{notice.text}</Notice>}
 
-        <fieldset className="section" disabled={readOnly}>
-          <h2>2 · Gift</h2>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search gifts or type any gift name…" aria-label="Search gifts" />
-          <div className="gift-grid" role="listbox" aria-label="Gifts">
+        <StepCard n={1} title={t('gift.step1')} hint={t('gift.step1.hint')} disabled={readOnly}>
+          <input className="search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('gift.search')} aria-label={t('gift.search')} />
+          <div className="gift-grid" role="listbox" aria-label={t('gift.step1')}>
             {gifts.map((g) => (
               <button
                 key={g.name}
@@ -225,244 +204,192 @@ export function BuilderPage({ id }: { id: string | null }) {
                 onClick={() => updateMapping({ selectedGiftName: g.name, selectedGiftId: null })}
               >
                 <span className="gift-icon">{g.icon}</span>
-                <span>{g.name}</span>
+                <span dir="ltr">{g.name}</span>
               </button>
             ))}
             {customGift && (
               <button type="button" className="gift gift--custom" onClick={() => updateMapping({ selectedGiftName: customGift, selectedGiftId: null })}>
                 <span className="gift-icon">🎁</span>
-                <span>Use “{customGift}”</span>
+                <span>{t('gift.useCustom', { name: customGift })}</span>
               </button>
             )}
           </div>
-          <p className="hint">
-            Selected: <b>{giftIcon(mapping.selectedGiftName)} {mapping.selectedGiftName}</b>. Names are matched case-insensitively; check the exact gift name in TikFinity.
+          <p className="selected-pill">
+            {t('gift.selected')}: <b>{giftIcon(mapping.selectedGiftName)} <span dir="ltr">{mapping.selectedGiftName}</span></b>
           </p>
-          <details className="advanced">
-            <summary>Advanced: gift ID</summary>
+          <details className="disclosure">
+            <summary>{t('common.advanced')}</summary>
+            <p className="muted small">{t('gift.nameHint')}</p>
             <label className="field">
-              <span>Gift ID (optional — matched instead of the name when both sides provide one)</span>
+              <span>{t('gift.giftId')}</span>
               <input
+                dir="ltr"
                 value={mapping.selectedGiftId ?? ''}
                 onChange={(e) => updateMapping({ selectedGiftId: e.target.value.replace(/[^\w-]/g, '').slice(0, 32) || null })}
-                placeholder="leave empty to match by name"
               />
+              <span className="muted small">{t('gift.giftIdHint')}</span>
             </label>
           </details>
-        </fieldset>
+        </StepCard>
 
-        <fieldset className="section" disabled={readOnly}>
-          <h2>3 · Effect</h2>
+        <StepCard n={2} title={t('gift.step2')} disabled={readOnly}>
           <div className="effect-gallery">
             {BUILDER_EFFECTS.map((e) => (
-              <button
-                key={e.id}
-                type="button"
-                className={`effect-card ${mapping.effectId === e.id ? 'is-active' : ''}`}
-                onClick={() => chooseEffect(e.id)}
-                aria-pressed={mapping.effectId === e.id}
-              >
+              <button key={e.id} type="button" className={`effect-card ${mapping.effectId === e.id ? 'is-active' : ''}`} onClick={() => chooseEffect(e.id)} aria-pressed={mapping.effectId === e.id}>
                 <EffectThumb shapes={e.thumb} colors={mapping.effectId === e.id ? s.colors : e.defaults.colors} />
-                <span className="effect-name">{e.label}</span>
-                <span className="hint">{e.description}</span>
+                <span className="effect-name">{effectLabel(t, e.id)}</span>
+                <span className="muted small">{effectDesc(t, e.id)}</span>
               </button>
             ))}
           </div>
-        </fieldset>
+        </StepCard>
 
-        <fieldset className="section" disabled={readOnly}>
-          <h2>4 · Customize</h2>
-          {(
-            [
-              ['count', 'Particle count', ''],
-              ['duration', 'Duration', 's'],
-              ['size', 'Particle size', 'px'],
-            ] as const
-          ).map(([key, label, unit]) => (
-            <label key={key} className="field">
-              <span className="field-row">
-                <span>{label}</span>
-                <output>
-                  {key === 'duration' ? (s[key] / 1000).toFixed(1) : s[key]}
-                  {unit}
-                </output>
-              </span>
-              <input type="range" min={LIMITS[key].min} max={LIMITS[key].max} step={key === 'duration' ? 100 : 1} value={s[key]} onChange={(e) => updateSettings({ [key]: Number(e.target.value) })} />
-            </label>
-          ))}
+        <StepCard n={3} title={t('gift.step3')} disabled={readOnly}>
           <div className="field">
-            <span>Intensity</span>
-            <div className="seg seg--inline">
-              {(['low', 'medium', 'high'] as Intensity[]).map((i) => (
-                <button key={i} type="button" className={s.intensity === i ? 'is-active' : ''} onClick={() => updateSettings({ intensity: i })}>
-                  {i}
-                </button>
-              ))}
-            </div>
+            <span>{t('gift.intensity')}</span>
+            <Segmented<Intensity>
+              label={t('gift.intensity')}
+              value={s.intensity}
+              onChange={(intensity) => updateSettings({ intensity })}
+              options={[
+                { value: 'low', label: t('gift.intensity.low') },
+                { value: 'medium', label: t('gift.intensity.medium') },
+                { value: 'high', label: t('gift.intensity.high') },
+              ]}
+            />
           </div>
           <div className="field">
-            <span>Colors</span>
-            <div className="colors">
-              {s.colors.map((c, i) => (
-                <span key={i} className="color">
-                  <input type="color" value={c} onChange={(e) => updateSettings({ colors: s.colors.map((x, j) => (j === i ? e.target.value : x)) })} aria-label={`Color ${i + 1}`} />
-                  {s.colors.length > 1 && (
-                    <button type="button" className="color-x" onClick={() => updateSettings({ colors: s.colors.filter((_, j) => j !== i) })} aria-label="Remove color">
-                      ×
-                    </button>
-                  )}
-                </span>
-              ))}
-              {s.colors.length < 8 && (
-                <button type="button" className="color-add" onClick={() => updateSettings({ colors: [...s.colors, '#ffffff'] })} aria-label="Add color">
-                  +
-                </button>
-              )}
-            </div>
+            <span>{t('common.colors')}</span>
+            <ColorList colors={s.colors} onChange={(colors) => updateSettings({ colors })} />
           </div>
           <label className="switch">
             <input type="checkbox" checked={mapping.alertSettings.enabled} onChange={(e) => updateAlert({ enabled: e.target.checked })} />
-            <span>Show alert text</span>
+            <span>{t('gift.alert')}</span>
           </label>
           {mapping.alertSettings.enabled && (
-            <div className="field-pair field-pair--icon">
-              <label className="field">
-                <span>Icon</span>
+            <div className="alert-fields">
+              <label className="field field--icon">
+                <span>{t('gift.alertIcon')}</span>
                 <input value={mapping.alertSettings.icon} onChange={(e) => updateAlert({ icon: e.target.value })} maxLength={8} />
               </label>
               <label className="field">
-                <span>Text · {'{user} {gift} {count}'}</span>
+                <span>{t('gift.alertText')}</span>
                 <input value={mapping.alertSettings.text} onChange={(e) => updateAlert({ text: e.target.value })} maxLength={120} />
+                <span className="muted small">{t('gift.alertHint')}</span>
               </label>
             </div>
           )}
-          <button type="button" className="btn" onClick={() => chooseEffect(mapping.effectId)}>
-            Reset {effect.label} to defaults
-          </button>
-        </fieldset>
-
-        <section className="section">
-          <h2>5 · Preview & test</h2>
-          <div className="row">
-            <button type="button" className="btn primary" onClick={preview}>
-              ▶ Preview
-            </button>
-            <button type="button" className="btn" onClick={test} title="Sends a TEST gift through the event pipeline">
-              🧪 Send test gift
-            </button>
-          </div>
-          <p className="hint">
-            Preview plays here only. “Send test gift” goes through the same matching as real gifts and also reaches overlay tabs open in this browser. Both are labelled TEST.
-          </p>
-        </section>
-
-        <section className="section">
-          <h2>6 · Save & overlay URL</h2>
-          {readOnly ? (
-            <button type="button" className="btn primary" onClick={duplicate}>
-              Duplicate as my configuration
-            </button>
-          ) : (
-            <div className="row">
-              <button type="button" className="btn primary" onClick={save} disabled={!dirty && !!saved}>
-                {saved ? (dirty ? '💾 Save changes' : '✓ Saved') : '💾 Save configuration'}
-              </button>
-              {saved && (
-                <button type="button" className="btn" onClick={toggleEnabled}>
-                  {saved.enabled ? 'Disable overlay' : 'Enable overlay'}
-                </button>
-              )}
-            </div>
-          )}
-          {saved && dirty && <p className="notice notice--info">Unsaved changes — overlay links below still use the last saved version.</p>}
-          {saved && !saved.enabled && <p className="notice notice--error">Disabled: overlays loading from storage will not play.</p>}
-          {portableUrl && localUrl ? (
-            <>
-              <div className="url-row">
-                <span className="hint">
-                  <b>Portable OBS link</b> — carries this config’s public settings, works on any computer that can open this app. Copy again after each save.
+          <details className="disclosure">
+            <summary>{t('common.advanced')}</summary>
+            {(
+              [
+                ['count', 'gift.count', ''],
+                ['duration', 'gift.duration', 's'],
+                ['size', 'gift.size', 'px'],
+              ] as const
+            ).map(([key, label, unit]) => (
+              <label key={key} className="field">
+                <span className="field-row">
+                  <span>{t(label)}</span>
+                  <output dir="ltr">
+                    {key === 'duration' ? (s[key] / 1000).toFixed(1) : s[key]}
+                    {unit}
+                  </output>
                 </span>
-                <code>{portableUrl}</code>
-                <div className="row">
-                  <button type="button" className="btn" onClick={() => copy(portableUrl, 'portable')}>
-                    {copied === 'portable' ? '✓ Copied' : 'Copy overlay URL'}
-                  </button>
-                  <a className="btn" href={portableUrl} target="_blank" rel="noreferrer">
-                    Open ↗
-                  </a>
-                </div>
-              </div>
-              <div className="url-row">
-                <span className="hint">
-                  <b>Storage link</b> — loads from this browser’s storage; always up to date and can be disabled, but only works in this browser (not in OBS).
-                </span>
-                <code>{localUrl}</code>
-                <div className="row">
-                  <button type="button" className="btn" onClick={() => copy(localUrl, 'local')}>
-                    {copied === 'local' ? '✓ Copied' : 'Copy'}
-                  </button>
-                  <a className="btn" href={localUrl} target="_blank" rel="noreferrer">
-                    Open ↗
-                  </a>
-                </div>
-              </div>
-            </>
-          ) : (
-            <p className="hint">Save the configuration to get its overlay URL.</p>
-          )}
-          {saved && !readOnly && (
-            <button type="button" className="btn btn--danger" onClick={remove}>
-              Delete configuration
-            </button>
-          )}
-        </section>
-
-        <section className="section">
-          <h2>My configurations</h2>
-          <p className="hint">Stored in {repository.capabilities.label.toLowerCase()}.</p>
-          <ul className="config-list">
-            {mine.map((c) => (
-              <li key={c.id} className={c.id === draft.id ? 'is-active' : ''}>
-                <a href={`#/builder/${c.id}`}>
-                  <span className="gift-icon">{giftIcon(c.mappings[0].selectedGiftName)}</span>
-                  <span className="config-name">{c.name}</span>
-                  <span className="hint">
-                    {c.mappings[0].selectedGiftName} → {getBuilderEffect(c.mappings[0].effectId).label}
-                    {!c.enabled && ' · disabled'}
-                  </span>
-                </a>
-              </li>
+                <input type="range" min={LIMITS[key].min} max={LIMITS[key].max} step={key === 'duration' ? 100 : 1} value={s[key]} onChange={(e) => updateSettings({ [key]: Number(e.target.value) })} />
+              </label>
             ))}
-            {!mine.length && <li className="hint">No saved configurations yet.</li>}
-          </ul>
-          <a className="btn" href="#/builder" onClick={() => id === null && setDraft(newConfig())}>
-            ＋ New configuration
-          </a>
+            <button type="button" className="btn btn--small" onClick={() => chooseEffect(mapping.effectId)}>
+              ↺ {t('gift.resetEffect')}
+            </button>
+          </details>
+        </StepCard>
+
+        <section className="card">
+          <div className="card-row">
+            <h2 className="card-title">📁 {t('gift.saved')}</h2>
+            <a className="btn btn--small" href="#/builder" onClick={() => id === null && setDraft(newConfig(t))}>
+              ＋ {t('common.new')}
+            </a>
+          </div>
+          {mine.length ? (
+            <ul className="config-list">
+              {mine.map((c) => (
+                <li key={c.id} className={c.id === draft.id ? 'is-active' : ''}>
+                  <a href={`#/builder/${c.id}`}>
+                    <span className="gift-icon">{giftIcon(c.mappings[0].selectedGiftName)}</span>
+                    <span className="config-name">{c.name}</span>
+                    <span className="muted small">
+                      <span dir="ltr">{c.mappings[0].selectedGiftName}</span> → {effectLabel(t, c.mappings[0].effectId)}
+                      {!c.enabled && ' · ⏸'}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">{t('common.empty')}</p>
+          )}
+          <p className="muted small">💾 {t('common.localHint')}</p>
         </section>
+      </div>
 
-        <SetupGuide layout={draft.layout} configId={saved?.id ?? null} giftName={mapping.selectedGiftName} />
-      </aside>
-
-      <main className="preview">
-        <div className="preview-bar">
-          <span className="hint">
-            Preview · {draft.layout === '16:9' ? '1920×1080' : '1080×1920'} · {giftIcon(mapping.selectedGiftName)} {mapping.selectedGiftName} → {effect.label}
-          </span>
-        </div>
-        <div className="preview-area">
-          <div className={`preview-frame preview-frame--${draft.layout === '16:9' ? 'wide' : 'tall'}`} style={{ '--accent': s.colors[0] } as CSSProperties}>
-            <OverlayStage
-              effects={[]}
-              settings={DEFAULT_SETTINGS}
-              snow={false}
-              snowSettings={DEFAULT_SNOW}
-              testBadge
-              resolvePlay={resolvePlay}
-              apiRef={stageApi}
+      <aside className="side">
+        <section className="card preview-card">
+          <div className="card-row">
+            <h2 className="card-title">👀 {t('common.preview')}</h2>
+            <Segmented<Layout>
+              label={t('common.layout')}
+              value={draft.layout}
+              onChange={(layout) => setDraft({ ...draft, layout })}
+              options={[
+                { value: '16:9', label: '16:9' },
+                { value: '9:16', label: '9:16' },
+              ]}
             />
           </div>
-        </div>
-      </main>
+          <div className="side-preview">
+            <div className={`preview-frame preview-frame--${draft.layout === '16:9' ? 'wide' : 'tall'}`} style={{ '--accent': s.colors[0] } as CSSProperties}>
+              <OverlayStage effects={[]} settings={DEFAULT_SETTINGS} snow={false} snowSettings={DEFAULT_SNOW} testBadge resolvePlay={resolvePlay} apiRef={stageApi} />
+            </div>
+          </div>
+          <div className="row">
+            <button type="button" className="btn primary" onClick={preview}>
+              ▶ {t('common.preview')}
+            </button>
+            <button type="button" className="btn" onClick={test}>
+              🧪 {t('common.test')}
+            </button>
+          </div>
+          <p className="muted small">{t('gift.previewHint')}</p>
+        </section>
+
+        <section className="card save-card">
+          {readOnly ? (
+            <button type="button" className="btn primary btn--big" onClick={duplicate}>
+              {t('common.duplicate')}
+            </button>
+          ) : (
+            <button type="button" className={`btn btn--big ${dirty || !saved ? 'primary' : ''}`} onClick={save} disabled={!dirty && !!saved}>
+              {saved ? (dirty ? `💾 ${t('common.saveChanges')}` : `✓ ${t('common.saved')}`) : `💾 ${t('common.save')}`}
+            </button>
+          )}
+          {saved && !saved.enabled && <Notice kind="error">{t('common.paused')}</Notice>}
+          {saved && !readOnly && (
+            <div className="row row--quiet">
+              <button type="button" className="btn btn--small" onClick={toggleEnabled}>
+                {saved.enabled ? `⏸ ${t('common.disable')}` : `▶ ${t('common.enable')}`}
+              </button>
+              <button type="button" className="btn btn--small btn--danger" onClick={remove}>
+                🗑 {t('common.delete')}
+              </button>
+            </div>
+          )}
+        </section>
+
+        <LinkCard url={portableUrl} storageUrl={storageUrl} dirty={!!saved && dirty} size={draft.layout === '16:9' ? '1920 × 1080' : '1080 × 1920'} />
+        <ConnectionCard configId={saved?.id ?? null} />
+      </aside>
     </div>
   );
 }

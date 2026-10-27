@@ -11,7 +11,14 @@ interface Props {
   topN: number;
   /** Shows a TEST DATA chip — any board fed by mock/demo events. */
   test: boolean;
+  /** Language of the on-stream text ("Waiting for…") and card direction. */
+  lang?: 'ar' | 'en';
 }
+
+const WAITING = {
+  en: { gifters: 'Waiting for gifts…', likers: 'Waiting for likes…' },
+  ar: { gifters: 'مستنيين الهدايا…', likers: 'مستنيين اللايكات…' },
+};
 
 const HEADER_U = 16;
 const ROW_U = 12;
@@ -29,7 +36,7 @@ function unitLabel(kind: LeaderboardKind, mode: ScoreMode): string {
  * Transparent leaderboard card. Rows are absolutely positioned by rank and
  * transition their transform, so re-ordering animates smoothly (FLIP-style).
  */
-export function LeaderboardView({ title, kind, rows, mode, colors, topN, test }: Props) {
+export function LeaderboardView({ title, kind, rows, mode, colors, topN, test, lang = 'en' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [unit, setUnit] = useState(5);
 
@@ -49,7 +56,7 @@ export function LeaderboardView({ title, kind, rows, mode, colors, topN, test }:
 
   const style = { '--u': `${unit}px`, '--lb-a': colors[0], '--lb-b': colors[1], '--rows': topN } as CSSProperties;
   return (
-    <div ref={ref} className="lb" style={style}>
+    <div ref={ref} className="lb" style={style} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang}>
       <section className="lb-card" aria-label={title}>
         <header className="lb-head">
           <span className="lb-icon">{kind === 'likers' ? '❤️' : '🏆'}</span>
@@ -57,7 +64,7 @@ export function LeaderboardView({ title, kind, rows, mode, colors, topN, test }:
           {test && <span className="lb-test">TEST DATA</span>}
         </header>
         <ol className="lb-list">
-          {rows.length === 0 && <li className="lb-empty">{kind === 'likers' ? 'Waiting for likes…' : 'Waiting for gifts…'}</li>}
+          {rows.length === 0 && <li className="lb-empty">{WAITING[lang][kind]}</li>}
           {/* Stable DOM order (by key): React never moves a row node, so the
               enter animation does not replay and transform transitions can
               slide rows into their new rank. */}

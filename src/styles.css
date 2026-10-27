@@ -483,7 +483,7 @@ input[type='range'] {
 .color-x {
   position: absolute;
   top: -6px;
-  right: -6px;
+  inset-inline-end: -6px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -851,7 +851,7 @@ fieldset.section:disabled {
 
 .steps {
   margin: 0;
-  padding-left: 18px;
+  padding-inline-start: 18px;
   font-size: 12px;
   line-height: 1.6;
   color: #c9d2e6;
@@ -885,7 +885,7 @@ fieldset.section:disabled {
   background: #ffb020;
 }
 .conn .chip {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 /* Overlay setup diagnostics (only when a config can't load). */
@@ -1123,4 +1123,799 @@ fieldset.section:disabled {
   gap: 6px;
   padding-top: 6px;
   border-top: 1px solid var(--line);
+}
+
+/* =====================================================================
+   Streamer-facing app (home, gift effects, leaderboards)
+   Direction comes from .shell[dir]; overlays never use these styles.
+   ===================================================================== */
+
+.shell {
+  --bg: #0b0d14;
+  --card: #141824;
+  --card-2: #1b2030;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --radius: 16px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 500px at 85% -10%, rgba(254, 44, 85, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 0% 0%, rgba(37, 244, 238, 0.08), transparent 55%),
+    var(--bg);
+  font-family: 'IBM Plex Sans Arabic', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.shell a {
+  color: inherit;
+}
+
+/* Top bar */
+.shell-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+  background: rgba(11, 13, 20, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.shell-brand b {
+  display: block;
+  font-size: 16px;
+}
+.shell-brand small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.shell-logo {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  font-size: 18px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--tt-red), #7a6bff 60%, var(--tt-cyan));
+  box-shadow: 0 6px 20px rgba(254, 44, 85, 0.35);
+}
+.shell-nav {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.shell-nav a {
+  padding: 7px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.shell-nav a:hover {
+  color: var(--text);
+}
+.shell-nav a.is-active {
+  color: #fff;
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.shell-lang {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+}
+.shell-lang:hover {
+  border-color: var(--border-strong);
+}
+.shell-body {
+  flex: 1;
+}
+
+/* Cards & building blocks */
+.shell .card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.shell .muted {
+  color: var(--muted);
+  margin: 0;
+}
+.shell .small {
+  font-size: 12.5px;
+}
+.shell .notice {
+  font-size: 13.5px;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.page-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 16px;
+  font-size: 26px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+}
+.page-head h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+.page-head p {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.name-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.name-field input {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Inputs inside the app */
+.shell input:not([type]),
+.shell input[type='search'],
+.shell input[type='number'],
+.shell select {
+  font: inherit;
+  color: var(--text);
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 10px 12px;
+  width: 100%;
+  min-width: 0;
+}
+.shell input:focus-visible,
+.shell button:focus-visible,
+.shell a:focus-visible,
+.shell summary:focus-visible {
+  outline: 2px solid var(--tt-cyan);
+  outline-offset: 2px;
+}
+.shell .field {
+  gap: 6px;
+  font-size: 13.5px;
+}
+
+/* Step cards */
+.step {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.step:disabled {
+  opacity: 0.6;
+}
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 18px 0;
+  float: inline-start; /* makes <legend> lay out like a normal block */
+}
+.step-n {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--tt-red), #ff6a3d);
+}
+.step-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+}
+.step-hint {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.step-body {
+  clear: both;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px 18px;
+}
+
+/* Segmented control */
+.segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  align-self: flex-start;
+}
+.segmented button {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.segmented button.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--tt-red), #ff6a3d);
+}
+
+/* Buttons */
+.shell .btn {
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  background: var(--card-2);
+  border-color: var(--border);
+}
+.shell .btn:hover {
+  border-color: var(--border-strong);
+  background: #222839;
+}
+.shell .btn.primary {
+  background: linear-gradient(135deg, var(--tt-red), #ff6a3d);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(254, 44, 85, 0.25);
+}
+.shell .btn.primary:hover {
+  filter: brightness(1.08);
+}
+.btn--big {
+  width: 100%;
+  padding: 14px 18px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+}
+.btn--small {
+  flex: none !important;
+  padding: 6px 10px !important;
+  font-size: 13px !important;
+}
+.btn--ghost {
+  background: transparent !important;
+}
+.shell .btn--danger {
+  color: #ffb3c2;
+}
+.row--quiet {
+  justify-content: center;
+}
+
+/* Workspace: editor + sticky side column */
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  gap: 24px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 24px;
+  align-items: start;
+}
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.side {
+  position: sticky;
+  top: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+.side-preview {
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  /* checker-free, dark stand-in for "your stream" behind the transparent overlay */
+  background: repeating-linear-gradient(45deg, #10131c 0 12px, #121623 12px 24px);
+  overflow: hidden;
+}
+.side-preview .preview-frame--wide {
+  width: 100%;
+}
+.side-preview .preview-frame--tall {
+  height: 380px;
+  width: auto;
+}
+.side-preview .preview-frame {
+  outline: none;
+}
+.side-preview--board {
+  padding: 14px;
+}
+.side-preview--board .lb-preview-frame {
+  width: 100%;
+  max-width: 340px;
+  height: 420px;
+  outline: none;
+}
+
+/* Gift picker */
+.shell .search {
+  font-size: 15px;
+}
+.shell .gift-grid {
+  max-height: 240px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+.shell .gift {
+  padding: 9px 10px;
+  font-size: 13.5px;
+  border-radius: 12px;
+  text-align: start;
+  background: var(--card-2);
+}
+.selected-pill {
+  margin: 0;
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  background: rgba(254, 44, 85, 0.12);
+  border: 1px solid rgba(254, 44, 85, 0.35);
+}
+
+/* Effect gallery */
+.shell .effect-gallery {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.shell .effect-card {
+  text-align: start;
+  border-radius: 14px;
+  background: var(--card-2);
+  transition: transform 0.12s, border-color 0.12s;
+}
+.shell .effect-card:hover {
+  transform: translateY(-2px);
+}
+.shell .effect-card .effect-thumb {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 132 / 74;
+}
+
+.alert-fields {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 10px;
+}
+.field--icon input {
+  text-align: center;
+  font-size: 18px !important;
+}
+.field--color input[type='color'] {
+  width: 100%;
+  height: 42px;
+  padding: 2px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--card-2);
+  cursor: pointer;
+}
+.shell .switch {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Leaderboard type choice */
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  text-align: start;
+  font: inherit;
+  color: var(--text);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card-2);
+  cursor: pointer;
+}
+.choice b {
+  font-size: 15px;
+}
+.choice-icon {
+  font-size: 26px;
+}
+.choice.is-active {
+  border-color: var(--tt-red);
+  box-shadow: 0 0 0 1px var(--tt-red) inset;
+  background: rgba(254, 44, 85, 0.08);
+}
+
+/* Disclosures ("Advanced", "How to add to OBS") */
+.disclosure {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+}
+.disclosure > summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure > summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-inline-end: 6px;
+  transition: transform 0.15s;
+}
+.shell[dir='rtl'] .disclosure > summary::before {
+  content: '◂';
+}
+.disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+.shell[dir='rtl'] .disclosure[open] > summary::before {
+  transform: rotate(-90deg);
+}
+.disclosure[open] > summary {
+  margin-bottom: 10px;
+}
+.disclosure > :not(summary) + :not(summary) {
+  margin-top: 8px;
+}
+
+.url-code {
+  display: block;
+  font-size: 11px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #07090e;
+  color: var(--tt-cyan);
+  word-break: break-all;
+  max-height: 90px;
+  overflow: auto;
+}
+.link-actions {
+  display: flex;
+  gap: 8px;
+}
+.link-actions .btn {
+  flex: 1;
+}
+.help-box {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 176, 32, 0.08);
+  border: 1px solid rgba(255, 176, 32, 0.25);
+  font-size: 13.5px;
+}
+.help-box .steps {
+  margin-top: 6px;
+}
+.shell .config-list a {
+  border-radius: 11px;
+  padding: 9px 11px;
+  background: var(--card-2);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #1f8a4c;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.25s ease-out;
+}
+.toast--error {
+  background: #b3263e;
+}
+.toast--info {
+  background: #2a3145;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+}
+
+/* Home */
+.home {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 20px 36px;
+  text-align: center;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20, 24, 36, 0.9), rgba(20, 24, 36, 0.5));
+  overflow: hidden;
+}
+.hero-glow {
+  position: absolute;
+  inset: -40% 10% auto;
+  height: 300px;
+  background: radial-gradient(closest-side, rgba(254, 44, 85, 0.35), transparent);
+  filter: blur(30px);
+  pointer-events: none;
+}
+.hero h1 {
+  position: relative;
+  margin: 0;
+  font-size: clamp(28px, 4.5vw, 44px);
+  line-height: 1.2;
+  background: linear-gradient(90deg, var(--tt-cyan), #fff 45%, var(--tt-red));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero > p {
+  position: relative;
+  max-width: 620px;
+  margin: 0;
+  font-size: 16.5px;
+  color: #c9d2e6;
+}
+.hero-actions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.hero-actions .btn--big {
+  width: auto;
+  min-width: 220px;
+  text-decoration: none;
+}
+.home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.home-section h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.how {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.how li {
+  gap: 6px !important;
+}
+.how-n {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--tt-red), #ff6a3d);
+}
+.type-grid,
+.saved-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+.type-card {
+  --type-accent: var(--tt-red);
+  position: relative;
+  height: 100%;
+  text-decoration: none;
+  gap: 6px !important;
+  transition: transform 0.15s, border-color 0.15s;
+}
+a.type-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--type-accent);
+}
+.type-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 24px;
+  background: color-mix(in srgb, var(--type-accent) 18%, transparent);
+}
+.type-card b {
+  font-size: 16px;
+}
+.type-cta {
+  margin-top: auto;
+  padding-top: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--type-accent);
+}
+.type-card.is-soon {
+  opacity: 0.55;
+}
+.type-card .chip {
+  align-self: flex-start;
+  margin-top: auto;
+}
+.saved-card {
+  flex-direction: row !important;
+  align-items: center;
+  text-decoration: none;
+  padding: 14px !important;
+}
+.saved-card:hover {
+  border-color: var(--border-strong);
+}
+.saved-icon {
+  font-size: 24px;
+}
+.saved-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.saved-text b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-foot {
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 1080px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+@media (max-width: 720px) {
+  .shell-bar {
+    flex-wrap: wrap;
+    padding: 10px 16px;
+  }
+  .shell-brand small {
+    display: none;
+  }
+  .shell-nav {
+    order: 3;
+    width: 100%;
+    margin: 0;
+    overflow-x: auto;
+  }
+  .shell-nav a {
+    flex: 1;
+    text-align: center;
+    padding: 7px 8px;
+  }
+  .shell-lang {
+    margin-inline-start: auto;
+  }
+  .workspace,
+  .home {
+    padding: 16px;
+  }
+  .how,
+  .choice-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-head h1 {
+    font-size: 20px;
+  }
 }

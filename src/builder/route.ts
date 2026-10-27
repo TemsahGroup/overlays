@@ -29,9 +29,12 @@ export interface OverlayFlags {
   setup: boolean;
   diag: boolean;
   eventApiUrl: string | null;
+  /** Language for on-stream text (?lang=ar|en). */
+  lang: 'ar' | 'en' | null;
 }
 
 export type BuilderRoute =
+  | { page: 'home' }
   | { page: 'builder'; id: string | null }
   | { page: 'leaderboards'; id: string | null }
   | ({ page: 'leaderboard' } & OverlayFlags)
@@ -45,9 +48,11 @@ export type BuilderRoute =
       diag: boolean;
       /** Validated loopback override, or null for the default address. */
       eventApiUrl: string | null;
+      lang: 'ar' | 'en' | null;
     };
 
 export function parseHash(hash: string = window.location.hash): BuilderRoute | null {
+  if (hash === '#/' || hash === '#') return { page: 'home' };
   const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard)(?:\/([^?]*))?(?:\?(.*))?$/);
   if (!m) return null;
   const [, page, rawId, query] = m;
@@ -65,6 +70,7 @@ export function parseHash(hash: string = window.location.hash): BuilderRoute | n
     setup: params.get('setup') === '1',
     diag: import.meta.env.DEV && params.get('diag') === '1',
     eventApiUrl: tf && isLoopbackWsUrl(tf) ? tf : null,
+    lang: params.get('lang') === 'ar' ? 'ar' : params.get('lang') === 'en' ? 'en' : null,
   };
 }
 
@@ -87,6 +93,7 @@ export function overlayUrl(id: string, portableData?: string): string {
   return `${appBaseUrl()}#/overlay/${id}${portableData ? `?c=${portableData}` : ''}`;
 }
 
-export function leaderboardUrl(id: string, portableData?: string): string {
-  return `${appBaseUrl()}#/leaderboard/${id}${portableData ? `?c=${portableData}` : ''}`;
+export function leaderboardUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
+  const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
+  return `${appBaseUrl()}#/leaderboard/${id}${params ? `?${params}` : ''}`;
 }
