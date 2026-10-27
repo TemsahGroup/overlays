@@ -146,6 +146,7 @@ export function LeaderboardOverlayPage({ id, portable, demo, live, setup, diag, 
           topN={config.topN}
           test={demo}
           lang={lang ?? 'en'}
+          look={config.style}
         />
       ) : (
         <div className="overlay-notice">This leaderboard has been disabled by its owner.</div>

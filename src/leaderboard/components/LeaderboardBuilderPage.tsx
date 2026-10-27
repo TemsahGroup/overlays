@@ -8,7 +8,9 @@ import { useI18n, type Translate } from '../../ui/i18n';
 import { ConnectionCard, LinkCard } from '../../ui/LinkCard';
 import { leaderboardRepository } from '../repository';
 import { createSession, rank, scoreMode, type LeaderboardSession } from '../store';
-import type { LeaderboardConfig, LeaderboardKind } from '../types';
+import { LEADERBOARD_STYLES, type LeaderboardConfig, type LeaderboardKind, type LeaderboardStyle } from '../types';
+import type { RankedRow } from '../store';
+import type { StringKey } from '../../ui/strings';
 import { KIND_DEFAULTS, LB_LIMITS, newLeaderboard, toPublicLeaderboard } from '../validate';
 import { DEMO_VIEWERS, feedDemo, testGift, testLikes } from './demo';
 import { LeaderboardView } from './LeaderboardView';
@@ -16,6 +18,24 @@ import { LeaderboardView } from './LeaderboardView';
 const sameContent = (a: LeaderboardConfig | null, b: LeaderboardConfig) =>
   !!a && JSON.stringify({ ...a, updatedAt: '' }) === JSON.stringify({ ...b, updatedAt: '' });
 const pick = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)];
+
+/** Fixed sample rows for the style picker thumbnails. */
+const SAMPLE_ROWS: RankedRow[] = [
+  { rank: 1, key: 'sara', name: 'sara.live', score: 1200 },
+  { rank: 2, key: 'omar', name: 'omar_99', score: 850 },
+  { rank: 3, key: 'lina', name: 'lina.art', score: 420 },
+  { rank: 4, key: 'karim', name: 'karim', score: 160 },
+  { rank: 5, key: 'nour', name: 'nour', score: 75 },
+];
+
+const SIZE_KEY: Record<LeaderboardStyle, StringKey> = {
+  glass: 'lb.size',
+  neon: 'lb.size',
+  royal: 'lb.size',
+  pills: 'lb.size',
+  podium: 'lb.sizePodium',
+  ticker: 'lb.sizeTicker',
+};
 
 const defaultTitle = (t: Translate, kind: LeaderboardKind) => (kind === 'likers' ? t('lb.defaultLikers') : t('lb.defaultGifters'));
 /** Titles that were never edited by the user (any language) follow the kind. */
@@ -178,6 +198,36 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
         </StepCard>
 
         <StepCard n={2} title={t('lb.step2')} disabled={readOnly}>
+          <div className="field">
+            <span>{t('lb.look')}</span>
+            <div className="look-grid" role="radiogroup" aria-label={t('lb.look')}>
+              {LEADERBOARD_STYLES.map((look) => (
+                <button
+                  key={look}
+                  type="button"
+                  role="radio"
+                  aria-checked={draft.style === look}
+                  className={`look-card look-card--${look} ${draft.style === look ? 'is-active' : ''}`}
+                  onClick={() => setDraft({ ...draft, style: look })}
+                >
+                  <span className="look-thumb">
+                    <LeaderboardView
+                      title={draft.title}
+                      kind={draft.kind}
+                      rows={SAMPLE_ROWS}
+                      mode="coins"
+                      colors={draft.colors}
+                      topN={look === 'ticker' ? 3 : 5}
+                      test={false}
+                      lang={lang}
+                      look={look}
+                    />
+                  </span>
+                  <b>{t(`lb.look.${look}` as StringKey)}</b>
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="field">
             <span>{t('lb.titleOnStream')}</span>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={40} />
@@ -254,7 +304,7 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
         <section className="card preview-card">
           <h2 className="card-title">👀 {t('common.preview')}</h2>
           <div className="side-preview side-preview--board">
-            <div className="lb-preview-frame">
+            <div className={`lb-preview-frame lb-preview-frame--${draft.style}`}>
               <LeaderboardView
                 title={draft.title}
                 kind={draft.kind}
@@ -264,6 +314,7 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
                 topN={draft.topN}
                 test
                 lang={lang}
+                look={draft.style}
               />
             </div>
           </div>
@@ -317,7 +368,7 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
           )}
         </section>
 
-        <LinkCard url={url} storageUrl={storageUrl} dirty={!!saved && dirty} size={t('lb.size')} />
+        <LinkCard url={url} storageUrl={storageUrl} dirty={!!saved && dirty} size={t(SIZE_KEY[draft.style])} />
         <ConnectionCard configId={saved?.id ?? null} />
       </aside>
     </div>

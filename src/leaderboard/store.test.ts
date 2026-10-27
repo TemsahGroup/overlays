@@ -140,6 +140,15 @@ describe('leaderboard config validation', () => {
     expect(c).toMatchObject({ kind: 'gifters', topN: 10, colors: ['#ffd166', '#00ff00'], sessionGapHours: 1, title: 'Top Gifters' });
   });
 
+  it('keeps a known board style and falls back to glass for old or invalid data', () => {
+    const base = { id: 'abcdef123', ownerId: 'owner12345' };
+    expect(sanitizeLeaderboard({ ...base, style: 'podium' })?.style).toBe('podium');
+    expect(sanitizeLeaderboard({ ...base, style: 'ticker' })?.style).toBe('ticker');
+    expect(sanitizeLeaderboard({ ...base, style: 'sparkly' })?.style).toBe('glass');
+    expect(sanitizeLeaderboard(base)?.style).toBe('glass'); // saved before styles existed
+    expect(sanitizePublicLeaderboard({ id: 'abcdef123', style: 'neon' })?.style).toBe('neon');
+  });
+
   it('public projection drops the owner', () => {
     const pub = toPublicLeaderboard(newLeaderboard('owner12345', 'likers'));
     expect(pub).not.toHaveProperty('ownerId');

@@ -4,6 +4,10 @@ export const LEADERBOARD_SCHEMA_VERSION = 1;
 
 export type LeaderboardKind = 'gifters' | 'likers';
 
+/** Visual template of the board. */
+export type LeaderboardStyle = 'glass' | 'podium' | 'neon' | 'royal' | 'pills' | 'ticker';
+export const LEADERBOARD_STYLES: LeaderboardStyle[] = ['glass', 'podium', 'neon', 'royal', 'pills', 'ticker'];
+
 export interface LeaderboardConfig {
   schemaVersion: number;
   id: string;
@@ -11,6 +15,8 @@ export interface LeaderboardConfig {
   ownerId: string;
   name: string;
   kind: LeaderboardKind;
+  /** Visual template; older saved boards default to 'glass'. */
+  style: LeaderboardStyle;
   title: string;
   /** Rows shown on stream (3–10). */
   topN: number;

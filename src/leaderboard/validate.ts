@@ -1,5 +1,12 @@
 import { isValidId, newId } from '../builder/validate';
-import { LEADERBOARD_SCHEMA_VERSION, type LeaderboardConfig, type LeaderboardKind, type PublicLeaderboardConfig } from './types';
+import {
+  LEADERBOARD_SCHEMA_VERSION,
+  LEADERBOARD_STYLES,
+  type LeaderboardConfig,
+  type LeaderboardKind,
+  type LeaderboardStyle,
+  type PublicLeaderboardConfig,
+} from './types';
 
 export const LB_LIMITS = {
   topN: { min: 3, max: 10 },
@@ -28,6 +35,7 @@ function sanitizeShared(v: Obj) {
     schemaVersion: LEADERBOARD_SCHEMA_VERSION,
     name: str(v.name, d.title, 60),
     kind,
+    style: (LEADERBOARD_STYLES as string[]).includes(v.style as string) ? (v.style as LeaderboardStyle) : 'glass',
     title: str(v.title, d.title, 40),
     topN: num(v.topN, 5, LB_LIMITS.topN.min, LB_LIMITS.topN.max),
     colors: [
@@ -65,6 +73,7 @@ export function newLeaderboard(ownerId: string, kind: LeaderboardKind = 'gifters
     ownerId,
     name: d.title,
     kind,
+    style: 'glass',
     title: d.title,
     topN: 5,
     colors: [...d.colors] as [string, string],
