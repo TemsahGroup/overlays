@@ -168,7 +168,7 @@ function ChatWorkspace({ id }: { id: string | null }) {
                 type="button"
                 role="radio"
                 aria-checked={draft.style === look}
-                className={`look-card look-card--chat ${draft.style === look ? 'is-active' : ''}`}
+                className={`look-card look-card--chat look-card--chat-${look} ${draft.style === look ? 'is-active' : ''}`}
                 onClick={() => set('style', look)}
               >
                 <span className="look-thumb">
@@ -274,7 +274,7 @@ function ChatWorkspace({ id }: { id: string | null }) {
         <section className="card preview-card">
           <h2 className="card-title">👀 {t('common.preview')}</h2>
           <div className="side-preview side-preview--chat">
-            <div className="chat-preview-frame">
+            <div className={`chat-preview-frame chat-preview-frame--${draft.style}`}>
               <ChatView messages={preview} look={draft.style} fadeSeconds={draft.fadeSeconds} test {...viewProps} />
             </div>
           </div>
@@ -320,7 +320,7 @@ function ChatWorkspace({ id }: { id: string | null }) {
           )}
         </section>
 
-        <LinkCard url={url} storageUrl={storageUrl} dirty={!!saved && dirty} size={t('chat.sizeHint')} />
+        <LinkCard url={url} storageUrl={storageUrl} dirty={!!saved && dirty} size={t(draft.style === 'ticker' ? 'chat.sizeTicker' : 'chat.sizeHint')} />
         <ConnectionCard configId={saved?.id ?? null} />
       </aside>
     </div>

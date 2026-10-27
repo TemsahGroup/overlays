@@ -44,6 +44,7 @@ describe('chat config validation', () => {
     const c = sanitizeChat({ id: 'abcdef123', ownerId: 'owner12345', style: 'weird', maxMessages: 99, fadeSeconds: -5, textScale: 500, colors: ['red'] });
     expect(c).toMatchObject({ style: 'bubbles', maxMessages: 20, fadeSeconds: 0, textScale: 160, colors: ['#7c5cff', '#25f4ee'], showAvatars: true, hideCommands: true });
     expect(sanitizeChat({ id: 'abcdef123', ownerId: 'owner12345', style: 'dialog' })?.style).toBe('dialog');
+    expect(sanitizeChat({ id: 'abcdef123', ownerId: 'owner12345', style: 'ticker' })?.style).toBe('ticker');
   });
 
   it('cleans the blocked word list', () => {

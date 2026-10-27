@@ -3,8 +3,8 @@
 export const CHAT_SCHEMA_VERSION = 1;
 
 /** Visual template of the chat box. */
-export type ChatStyle = 'bubbles' | 'glass' | 'classic' | 'neon' | 'comic' | 'retro' | 'dialog';
-export const CHAT_STYLES: ChatStyle[] = ['bubbles', 'glass', 'classic', 'neon', 'comic', 'retro', 'dialog'];
+export type ChatStyle = 'bubbles' | 'glass' | 'classic' | 'neon' | 'comic' | 'retro' | 'dialog' | 'esports' | 'sticky' | 'ticker';
+export const CHAT_STYLES: ChatStyle[] = ['bubbles', 'glass', 'classic', 'neon', 'comic', 'retro', 'dialog', 'esports', 'sticky', 'ticker'];
 
 export interface ChatConfig {
   schemaVersion: number;

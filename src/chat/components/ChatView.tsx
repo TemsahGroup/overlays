@@ -41,12 +41,14 @@ export function ChatView({ messages, look, colors, textScale, showAvatars, fadeS
   useEffect(() => {
     const el = ref.current!;
     // 1u = 1% of the width, capped so a full-screen source does not get huge text.
-    const update = () => setUnit(Math.max(1.5, Math.min(el.clientWidth / 100, el.clientHeight / 50, 7)));
+    // The ticker is one row, so its height decides the size.
+    const update = () =>
+      setUnit(Math.max(1.5, look === 'ticker' ? Math.min(el.clientHeight / 14, 9) : Math.min(el.clientWidth / 100, el.clientHeight / 50, 7)));
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [look]);
 
   useEffect(() => {
     if (fadeSeconds <= 0) return;
