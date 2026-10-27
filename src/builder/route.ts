@@ -20,6 +20,8 @@
 //   #/wheel/<id>?c=<data>        wheel OBS overlay (same flags as #/overlay)
 //   #/timers, #/timers/<id>      gift timer editor
 //   #/timer/<id>?c=<data>        gift timer OBS overlay (same flags as #/overlay)
+//   #/spotlights, #/spotlights/<id>  last / biggest gift bar editor
+//   #/spotlight/<id>?c=<data>    spotlight OBS overlay (same flags as #/overlay)
 //
 // Hash routes keep the existing query-parameter app untouched, need no router
 // dependency and work with Vite's relative `base: './'` on any static host.
@@ -54,6 +56,8 @@ export type BuilderRoute =
   | ({ page: 'wheel' } & OverlayFlags)
   | { page: 'timers'; id: string | null }
   | ({ page: 'timer' } & OverlayFlags)
+  | { page: 'spotlights'; id: string | null }
+  | ({ page: 'spotlight' } & OverlayFlags)
   | {
       page: 'overlay';
       id: string;
@@ -69,16 +73,16 @@ export type BuilderRoute =
 
 export function parseHash(hash: string = window.location.hash): BuilderRoute | null {
   if (hash === '#/' || hash === '#') return { page: 'home' };
-  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard|chats|chat|goals|goal|wheels|wheel|timers|timer)(?:\/([^?]*))?(?:\?(.*))?$/);
+  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard|chats|chat|goals|goal|wheels|wheel|timers|timer|spotlights|spotlight)(?:\/([^?]*))?(?:\?(.*))?$/);
   if (!m) return null;
   const [, page, rawId, query] = m;
   const id = rawId && isValidId(rawId) ? rawId : null;
-  if (page === 'builder' || page === 'leaderboards' || page === 'chats' || page === 'goals' || page === 'wheels' || page === 'timers') return { page, id };
+  if (page === 'builder' || page === 'leaderboards' || page === 'chats' || page === 'goals' || page === 'wheels' || page === 'timers' || page === 'spotlights') return { page, id };
   if (!id) return null;
   const params = new URLSearchParams(query ?? '');
   const tf = params.get('tf');
   return {
-    page: page === 'leaderboard' || page === 'chat' || page === 'goal' || page === 'wheel' || page === 'timer' ? page : 'overlay',
+    page: page === 'leaderboard' || page === 'chat' || page === 'goal' || page === 'wheel' || page === 'timer' || page === 'spotlight' ? page : 'overlay',
     id,
     portable: params.get('c'),
     demo: params.get('demo') === '1',
@@ -132,4 +136,9 @@ export function wheelUrl(id: string, portableData?: string, lang?: 'ar' | 'en'):
 export function timerUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
   const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
   return `${appBaseUrl()}#/timer/${id}${params ? `?${params}` : ''}`;
+}
+
+export function spotlightUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
+  const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
+  return `${appBaseUrl()}#/spotlight/${id}${params ? `?${params}` : ''}`;
 }

@@ -11,6 +11,8 @@ import { goalRepository } from '../goal/repository';
 import type { GoalConfig } from '../goal/types';
 import { leaderboardRepository } from '../leaderboard/repository';
 import type { LeaderboardConfig } from '../leaderboard/types';
+import { spotlightRepository } from '../spotlight/repository';
+import type { SpotlightConfig } from '../spotlight/types';
 import { timerRepository } from '../timer/repository';
 import type { TimerConfig } from '../timer/types';
 import { AppShell } from '../ui/AppShell';
@@ -35,8 +37,9 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine(), wheelRepository.listMine(), timerRepository.listMine()] as const;
-    Promise.all(lists).then(([gifts, boards, chats, goals, wheels, timers]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[], WheelConfig[], TimerConfig[]]) => {
+    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine(), wheelRepository.listMine(), timerRepository.listMine(), spotlightRepository.listMine()] as const;
+    Promise.all(lists).then(
+      ([gifts, boards, chats, goals, wheels, timers, spots]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[], WheelConfig[], TimerConfig[], SpotlightConfig[]]) => {
       if (cancelled) return;
       const list: SavedItem[] = [
         ...gifts.map((c) => ({
@@ -84,6 +87,15 @@ export function HomePage() {
           paused: !c.enabled,
           updatedAt: c.updatedAt,
         })),
+        ...spots.map((c) => ({
+          key: `s-${c.id}`,
+          href: `#/spotlights/${c.id}`,
+          icon: '🥇',
+          name: c.name,
+          detail: c.items.map((i) => t(`spot.item.${i}` as StringKey)).join(' · '),
+          paused: !c.enabled,
+          updatedAt: c.updatedAt,
+        })),
         ...chats.map((c) => ({
           key: `c-${c.id}`,
           href: `#/chats/${c.id}`,
@@ -95,7 +107,8 @@ export function HomePage() {
         })),
       ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setItems(list);
-    });
+      },
+    );
     return () => {
       cancelled = true;
     };

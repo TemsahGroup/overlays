@@ -15,6 +15,8 @@ import { ChatOverlayPage } from './chat/components/ChatOverlayPage';
 import { GoalBuilderPage } from './goal/components/GoalBuilderPage';
 import { GoalOverlayPage } from './goal/components/GoalOverlayPage';
 import { HomePage } from './home/HomePage';
+import { SpotlightBuilderPage } from './spotlight/components/SpotlightBuilderPage';
+import { SpotlightOverlayPage } from './spotlight/components/SpotlightOverlayPage';
 import { TimerBuilderPage } from './timer/components/TimerBuilderPage';
 import { TimerOverlayPage } from './timer/components/TimerOverlayPage';
 import { WheelBuilderPage } from './wheel/components/WheelBuilderPage';
@@ -62,6 +64,17 @@ export default function App() {
         {builderRoute.page === 'builder' ? <BuilderPage id={builderRoute.id} /> : <LeaderboardBuilderPage id={builderRoute.id} />}
       </I18nProvider>
     );
+  }
+  if (builderRoute?.page === 'spotlights') {
+    return (
+      <I18nProvider>
+        <SpotlightBuilderPage id={builderRoute.id} />
+      </I18nProvider>
+    );
+  }
+  if (builderRoute?.page === 'spotlight') {
+    const { page: _page, ...flags } = builderRoute;
+    return <SpotlightOverlayPage {...flags} />;
   }
   if (builderRoute?.page === 'timers') {
     return (

@@ -2326,7 +2326,7 @@ a.type-card:hover {
   border-color: var(--tt-red);
   box-shadow: 0 0 0 1px var(--tt-red) inset;
 }
-.look-card b {
+.look-card > b {
   font-size: 13px;
 }
 .look-thumb {
@@ -4575,4 +4575,251 @@ a.type-card:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+/* ---------- Spotlight (last / biggest gift) ---------- */
+
+.spot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  --u: 4px;
+  --spot-a: #ffd166;
+  --spot-b: #fe2c55;
+  font-family: 'Inter', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #fff;
+}
+.spot-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 2);
+  width: calc(var(--u) * 100);
+  margin: 0;
+  padding: calc(var(--u) * 1) 0;
+  list-style: none;
+}
+.spot-row {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  height: calc(var(--u) * 14);
+  padding-inline: calc(var(--u) * 1.6) calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 7);
+  background: rgba(14, 12, 24, 0.86);
+  border: calc(var(--u) * 0.4) solid color-mix(in srgb, var(--spot-a) 55%, transparent);
+  box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 3) rgba(0, 0, 0, 0.4);
+  animation: spot-in 500ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+@keyframes spot-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 3));
+  }
+}
+.spot-row--biggestGift {
+  border-color: var(--spot-a);
+}
+.spot-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--spot-a) 55%, transparent) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: spot-flash 1.2s ease-out forwards;
+  opacity: 0;
+}
+@keyframes spot-flash {
+  0% {
+    opacity: 1;
+    background-position: 150% 0;
+  }
+  100% {
+    opacity: 0;
+    background-position: -60% 0;
+  }
+}
+.spot-label {
+  flex: none;
+  padding: calc(var(--u) * 1) calc(var(--u) * 2.2);
+  border-radius: calc(var(--u) * 5);
+  font-size: calc(var(--u) * 3.2);
+  font-weight: 900;
+  color: #111;
+  background: var(--spot-a);
+  white-space: nowrap;
+}
+.spot-row--lastFollow .spot-label,
+.spot-row--lastShare .spot-label {
+  color: #fff;
+  background: var(--spot-b);
+}
+.spot-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  border-radius: 50%;
+  font-size: calc(var(--u) * 4.2);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--spot-a), var(--spot-b));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.spot-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.3);
+}
+.spot-name,
+.spot-detail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+}
+.spot-name {
+  font-size: calc(var(--u) * 4.6);
+  font-weight: 900;
+  animation: spot-name-in 500ms ease-out;
+}
+@keyframes spot-name-in {
+  from {
+    opacity: 0;
+    transform: translateY(40%);
+  }
+}
+.spot-detail {
+  font-size: calc(var(--u) * 3.4);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+.spot-row.is-empty .spot-detail {
+  color: rgba(255, 255, 255, 0.55);
+}
+.spot-test {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  padding: calc(var(--u) * 0.4) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 1);
+  font-size: calc(var(--u) * 2.4);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #2a1d00;
+  background: rgba(255, 196, 0, 0.92);
+}
+
+/* Glass: square-ish translucent cards */
+.spot--glass .spot-row {
+  border-radius: calc(var(--u) * 3);
+  border: none;
+  border-inline-start: calc(var(--u) * 1) solid var(--spot-a);
+  background: rgba(20, 18, 34, 0.7);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.spot--glass .spot-label {
+  color: var(--spot-a);
+  background: rgba(255, 255, 255, 0.08);
+}
+.spot--glass .spot-row--lastFollow .spot-label,
+.spot--glass .spot-row--lastShare .spot-label {
+  color: var(--spot-b);
+}
+
+/* Neon */
+.spot--neon .spot-row {
+  background: rgba(6, 4, 16, 0.88);
+  border-color: var(--spot-a);
+  box-shadow: 0 0 calc(var(--u) * 2) var(--spot-a), inset 0 0 calc(var(--u) * 1.6) color-mix(in srgb, var(--spot-a) 35%, transparent);
+}
+.spot--neon .spot-row--lastFollow,
+.spot--neon .spot-row--lastShare {
+  border-color: var(--spot-b);
+  box-shadow: 0 0 calc(var(--u) * 2) var(--spot-b);
+}
+.spot--neon .spot-label {
+  color: var(--spot-a);
+  background: none;
+  border: calc(var(--u) * 0.3) solid currentColor;
+  text-shadow: 0 0 calc(var(--u) * 1) currentColor;
+}
+.spot--neon .spot-row--lastFollow .spot-label,
+.spot--neon .spot-row--lastShare .spot-label {
+  color: var(--spot-b);
+  background: none;
+}
+.spot--neon .spot-name {
+  text-shadow: 0 0 calc(var(--u) * 1.2) var(--spot-a);
+}
+
+/* Gold: royal frame */
+.spot--gold .spot-row {
+  border-radius: calc(var(--u) * 2);
+  border: calc(var(--u) * 0.6) solid #e8c25a;
+  background: linear-gradient(180deg, rgba(48, 32, 6, 0.92), rgba(24, 16, 4, 0.92));
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.5) rgba(0, 0, 0, 0.5), 0 0 calc(var(--u) * 2.4) rgba(232, 194, 90, 0.5);
+}
+.spot--gold .spot-label {
+  color: #3a2700;
+  background: linear-gradient(180deg, #ffe58a, #c99712);
+}
+.spot--gold .spot-name {
+  font-family: Georgia, 'Times New Roman', 'IBM Plex Sans Arabic', serif;
+  color: #ffe58a;
+}
+.spot--gold .spot-avatar {
+  color: #3a2700;
+  background: linear-gradient(135deg, #ffe58a, #c99712);
+  border: calc(var(--u) * 0.4) solid #fff3c4;
+}
+
+/* Minimal: outlined text, no background */
+.spot--minimal .spot-row {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding-inline: 0;
+  text-shadow:
+    0 0 calc(var(--u) * 0.5) #000,
+    0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) #000;
+}
+.spot--minimal .spot-label {
+  text-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-row,
+  .spot-flash,
+  .spot-name {
+    animation: none;
+  }
+}
+
+/* Spotlight picker thumbnails and preview */
+.look-card--spot .look-thumb {
+  height: 110px;
+}
+.side-preview--spot {
+  padding: 14px;
+}
+.side-preview--spot .spot-preview-frame {
+  width: 100%;
+  height: 200px;
+}
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Keep Latin names next to the avatar in Arabic bars */
+.spot[dir='rtl'] .spot-name,
+.spot[dir='rtl'] .spot-detail {
+  text-align: right;
 }
