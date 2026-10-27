@@ -6,6 +6,9 @@ import type { OverlayConfig } from '../builder/types';
 import { OVERLAY_TYPES } from '../catalog/overlayTypes';
 import { chatRepository } from '../chat/repository';
 import type { ChatConfig } from '../chat/types';
+import { metricIcon } from '../goal/components/GoalView';
+import { goalRepository } from '../goal/repository';
+import type { GoalConfig } from '../goal/types';
 import { leaderboardRepository } from '../leaderboard/repository';
 import type { LeaderboardConfig } from '../leaderboard/types';
 import { AppShell } from '../ui/AppShell';
@@ -28,7 +31,8 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine()]).then(([gifts, boards, chats]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[]]) => {
+    const lists = [repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine(), goalRepository.listMine()] as const;
+    Promise.all(lists).then(([gifts, boards, chats, goals]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[], GoalConfig[]]) => {
       if (cancelled) return;
       const list: SavedItem[] = [
         ...gifts.map((c) => ({
@@ -46,6 +50,15 @@ export function HomePage() {
           icon: c.kind === 'likers' ? '❤️' : '🏆',
           name: c.name,
           detail: `${c.kind === 'likers' ? t('lb.likers') : t('lb.gifters')} · ${t('lb.rowsValue', { n: c.topN })}`,
+          paused: !c.enabled,
+          updatedAt: c.updatedAt,
+        })),
+        ...goals.map((c) => ({
+          key: `o-${c.id}`,
+          href: `#/goals/${c.id}`,
+          icon: metricIcon(c.metric, 'coins'),
+          name: c.name,
+          detail: `${t(`goal.metric.${c.metric}` as StringKey)} · ${c.target.toLocaleString('en')}`,
           paused: !c.enabled,
           updatedAt: c.updatedAt,
         })),

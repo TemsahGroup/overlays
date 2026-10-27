@@ -2,12 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useI18n } from './i18n';
 import type { StringKey } from './strings';
 
-export type NavKey = 'home' | 'gifts' | 'leaderboards' | 'chat';
+export type NavKey = 'home' | 'gifts' | 'leaderboards' | 'goal' | 'chat';
 
 const NAV: { key: NavKey; href: string; icon: string; label: StringKey }[] = [
   { key: 'home', href: '#/', icon: '🏠', label: 'nav.home' },
   { key: 'gifts', href: '#/builder', icon: '🎁', label: 'nav.gifts' },
   { key: 'leaderboards', href: '#/leaderboards', icon: '🏆', label: 'nav.leaderboards' },
+  { key: 'goal', href: '#/goals', icon: '🎯', label: 'nav.goal' },
   { key: 'chat', href: '#/chats', icon: '💬', label: 'nav.chat' },
 ];
 

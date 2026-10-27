@@ -43,6 +43,15 @@ export interface NormalizedLikeEvent {
   provider: 'mock' | 'tikfinity';
 }
 
+/** A follow or share (goal bar counts these; only the event name and msgId are relied on). */
+export interface NormalizedSocialEvent {
+  type: 'follow' | 'share';
+  username?: string;
+  eventId?: string;
+  isTest: boolean;
+  provider: 'mock' | 'tikfinity';
+}
+
 /** One viewer chat message (chat overlay). */
 export interface NormalizedChatEvent {
   type: 'chat';

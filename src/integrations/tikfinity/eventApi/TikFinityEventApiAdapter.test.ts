@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NormalizedChatEvent, NormalizedGiftEvent, NormalizedLikeEvent } from '../../../builder/giftEvents';
+import type { NormalizedChatEvent, NormalizedGiftEvent, NormalizedLikeEvent, NormalizedSocialEvent } from '../../../builder/giftEvents';
 import { TikFinityEventApiAdapter, type SocketLike } from './TikFinityEventApiAdapter';
 
 class FakeSocket implements SocketLike {
@@ -225,6 +225,21 @@ describe('TikFinityEventApiAdapter', () => {
     expect(adapter.liveState.chatsReceived).toBe(1);
     expect(adapter.recentDiagnostics.map((d) => d.chat?.status)).toEqual(['unrecognized', 'duplicate', 'final']);
     expect(JSON.stringify(adapter.recentDiagnostics)).not.toContain('hello there');
+  });
+
+  it('counts follows and shares, dropping repeated msgIds', () => {
+    const { adapter, sockets, onEvent } = setup();
+    const social: NormalizedSocialEvent[] = [];
+    adapter.connect(onEvent, { onSocial: (e) => social.push(e) });
+    sockets[0].open();
+    sockets[0].send({ event: 'follow', data: { uniqueId: 'a', msgId: 'F1' } });
+    sockets[0].send({ event: 'follow', data: { uniqueId: 'a', msgId: 'F1' } });
+    sockets[0].send({ event: 'share', data: { user: { uniqueId: 'b' } } });
+    expect(social).toEqual([
+      { type: 'follow', username: 'a', eventId: 'F1', isTest: false, provider: 'tikfinity' },
+      { type: 'share', username: 'b', eventId: undefined, isTest: false, provider: 'tikfinity' },
+    ]);
+    expect(adapter.liveState.socialReceived).toBe(2);
   });
 
   it('gift-only pages ignore likes (no onLike given)', () => {

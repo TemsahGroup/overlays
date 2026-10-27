@@ -12,6 +12,8 @@ import { LeaderboardBuilderPage } from './leaderboard/components/LeaderboardBuil
 import { LeaderboardOverlayPage } from './leaderboard/components/LeaderboardOverlayPage';
 import { ChatBuilderPage } from './chat/components/ChatBuilderPage';
 import { ChatOverlayPage } from './chat/components/ChatOverlayPage';
+import { GoalBuilderPage } from './goal/components/GoalBuilderPage';
+import { GoalOverlayPage } from './goal/components/GoalOverlayPage';
 import { HomePage } from './home/HomePage';
 import { I18nProvider } from './ui/i18n';
 
@@ -56,6 +58,17 @@ export default function App() {
         {builderRoute.page === 'builder' ? <BuilderPage id={builderRoute.id} /> : <LeaderboardBuilderPage id={builderRoute.id} />}
       </I18nProvider>
     );
+  }
+  if (builderRoute?.page === 'goals') {
+    return (
+      <I18nProvider>
+        <GoalBuilderPage id={builderRoute.id} />
+      </I18nProvider>
+    );
+  }
+  if (builderRoute?.page === 'goal') {
+    const { page: _page, ...flags } = builderRoute;
+    return <GoalOverlayPage {...flags} />;
   }
   if (builderRoute?.page === 'chats') {
     return (

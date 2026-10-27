@@ -13,8 +13,9 @@ import {
   type NormalizedChatEvent,
   type NormalizedGiftEvent,
   type NormalizedLikeEvent,
+  type NormalizedSocialEvent,
 } from '../../../builder/giftEvents';
-import { describeShape, extractChat, extractGift, extractLike, maskUser, parseMessage, type GiftExtraction, type GiftLayout } from './parse';
+import { describeShape, extractChat, extractGift, extractLike, extractSocial, maskUser, parseMessage, type GiftExtraction, type GiftLayout } from './parse';
 
 /** Default from the project brief; TikFinity's page shows ws://localhost:21213/ (same loopback service). */
 export const DEFAULT_EVENT_API_URL = 'ws://127.0.0.1:21213/';
@@ -33,6 +34,8 @@ export interface LiveState {
   giftsReceived: number;
   likesReceived: number;
   chatsReceived: number;
+  /** Follow and share events counted. */
+  socialReceived: number;
   lastMessageAt: number | null;
   /** Set only after a real gift message was parsed — the "verified live" signal. */
   verifiedGiftAt: number | null;
@@ -79,6 +82,8 @@ export interface ConnectOptions {
   onLike?: (event: NormalizedLikeEvent) => void;
   /** Receives chat messages (chat overlay). */
   onChat?: (event: NormalizedChatEvent) => void;
+  /** Receives follows and shares (goal bar). */
+  onSocial?: (event: NormalizedSocialEvent) => void;
 }
 
 /** Minimal WebSocket surface used here (lets tests inject a fake). */
@@ -108,6 +113,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
   private onEvent: ((e: NormalizedGiftEvent) => void) | null = null;
   private onLike: ((e: NormalizedLikeEvent) => void) | null = null;
   private onChat: ((e: NormalizedChatEvent) => void) | null = null;
+  private onSocial: ((e: NormalizedSocialEvent) => void) | null = null;
   private stateListeners = new Set<(s: LiveState) => void>();
   private diagListeners = new Set<(d: DiagnosticEntry) => void>();
   private diagnostics: DiagnosticEntry[] = [];
@@ -131,6 +137,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       giftsReceived: 0,
       likesReceived: 0,
       chatsReceived: 0,
+      socialReceived: 0,
       lastMessageAt: null,
       verifiedGiftAt: null,
       layout: null,
@@ -169,6 +176,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
     this.onEvent = onEvent;
     this.onLike = options.onLike ?? null;
     this.onChat = options.onChat ?? null;
+    this.onSocial = options.onSocial ?? null;
     if (this.active) return; // already running: never open a second socket
     this.active = true;
     this.open();
@@ -179,6 +187,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
     this.onEvent = null;
     this.onLike = null;
     this.onChat = null;
+    this.onSocial = null;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     const ws = this.socket;
@@ -278,6 +287,16 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
     }
     if (parsed.event === 'chat') {
       this.handleChat(parsed.data, entry, at);
+      return;
+    }
+    if (parsed.event === 'follow' || parsed.event === 'share') {
+      const f = extractSocial(parsed.data);
+      const duplicate = this.dedupe.isDuplicate(f.msgId ? `${parsed.event}:${f.msgId}` : undefined, at);
+      entry.reason = duplicate ? 'duplicate' : undefined;
+      this.record(entry);
+      if (duplicate) return;
+      this.setState({ socialReceived: this.live.socialReceived + 1 });
+      this.onSocial?.({ type: parsed.event, username: f.username, eventId: f.msgId, isTest: false, provider: 'tikfinity' });
       return;
     }
     if (parsed.event !== 'gift') {

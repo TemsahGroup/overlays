@@ -84,7 +84,7 @@ export function LiveStatusPanel({ live, state, adapter, diag, extra }: Props) {
       <p className="hint">{state?.detail ?? 'Waiting for configuration…'}</p>
       {state && (
         <p className="hint mono">
-          {state.url} · messages {state.messages} (last {since(state.lastMessageAt)}) · final gifts received {state.giftsReceived} · like batches {state.likesReceived} · chat messages {state.chatsReceived}
+          {state.url} · messages {state.messages} (last {since(state.lastMessageAt)}) · final gifts received {state.giftsReceived} · like batches {state.likesReceived} · chat messages {state.chatsReceived} · follows/shares {state.socialReceived}
           {state.layout ? ` · payload layout ${state.layout}` : ''}
         </p>
       )}

@@ -37,6 +37,10 @@
 //   badges       data.isModerator, data.isSubscriber (booleans)
 //   message id   data.msgId
 //
+// Follow / share events: TikFinity documents both event names. The goal bar
+// only counts them, so nothing beyond the event name is required; msgId (if
+// present) drops duplicates and uniqueId is used for diagnostics only.
+//
 // Streak rule (both docs): giftType 1 gifts are sent repeatedly with a rising
 // repeatCount while the streak runs; only the message with repeatEnd set is
 // final. Other gift types are final immediately.
@@ -209,6 +213,11 @@ export function extractChat(data: Obj): ChatExtraction {
   if (!fields.username) missing.push(user ? 'user.uniqueId' : 'uniqueId');
   const ok = fields.comment !== undefined && fields.username !== undefined;
   return { status: ok ? 'final' : 'unrecognized', fields, missing };
+}
+
+export function extractSocial(data: Obj): { username?: string; msgId?: string } {
+  const user = isObj(data.user) ? data.user : null;
+  return { username: text(data.uniqueId, 64) ?? text(user?.uniqueId, 64) ?? text(user?.displayId, 64), msgId: idText(data.msgId) };
 }
 
 /**
