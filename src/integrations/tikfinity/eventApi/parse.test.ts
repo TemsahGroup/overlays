@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeShape, extractGift, extractLike, isLoopbackWsUrl, maskUser, parseMessage } from './parse';
+import { describeShape, extractChat, extractGift, extractLike, isLoopbackWsUrl, maskUser, parseMessage } from './parse';
 
 // Fixtures follow the field names documented by TikTok-Live-Connector (which
 // TikFinity's Event API page references). They are NOT captured TikFinity
@@ -156,5 +156,25 @@ describe('diagnostic helpers', () => {
     expect(isLoopbackWsUrl('ws://evil.example.com:21213/')).toBe(false);
     expect(isLoopbackWsUrl('ws://user:pass@127.0.0.1:21213/')).toBe(false);
     expect(isLoopbackWsUrl('http://127.0.0.1:21213/')).toBe(false);
+  });
+});
+
+describe('extractChat', () => {
+  it('reads the documented v1 chat fields', () => {
+    const x = extractChat({ comment: ' hi ', uniqueId: 'viewer1', nickname: 'V', msgId: '9', isSubscriber: true, profilePictureUrl: 'https://p16.tiktokcdn.com/x.jpg' });
+    expect(x.status).toBe('final');
+    expect(x.fields).toEqual({ comment: 'hi', username: 'viewer1', nickname: 'V', msgId: '9', isSubscriber: true, isModerator: undefined, avatarUrl: 'https://p16.tiktokcdn.com/x.jpg' });
+  });
+
+  it('accepts the nested user and rejects messages without text or user', () => {
+    expect(extractChat({ comment: 'yo', user: { uniqueId: 'v2' } }).fields.username).toBe('v2');
+    expect(extractChat({ uniqueId: 'v' }).status).toBe('unrecognized');
+    expect(extractChat({ comment: 'x' }).missing).toEqual(['uniqueId']);
+  });
+
+  it('caps long messages and only keeps https avatars', () => {
+    expect(extractChat({ comment: 'a'.repeat(500), uniqueId: 'v' }).fields.comment).toHaveLength(200);
+    expect(extractChat({ comment: 'x', uniqueId: 'v', profilePictureUrl: 'javascript:alert(1)' }).fields.avatarUrl).toBeUndefined();
+    expect(extractChat({ comment: 'x', uniqueId: 'v', profilePictureUrl: 'http://example.com/a.png' }).fields.avatarUrl).toBeUndefined();
   });
 });

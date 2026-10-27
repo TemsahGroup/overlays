@@ -10,6 +10,8 @@ import { BuilderPage } from './builder/components/BuilderPage';
 import { BuilderOverlayPage } from './builder/components/BuilderOverlayPage';
 import { LeaderboardBuilderPage } from './leaderboard/components/LeaderboardBuilderPage';
 import { LeaderboardOverlayPage } from './leaderboard/components/LeaderboardOverlayPage';
+import { ChatBuilderPage } from './chat/components/ChatBuilderPage';
+import { ChatOverlayPage } from './chat/components/ChatOverlayPage';
 import { HomePage } from './home/HomePage';
 import { I18nProvider } from './ui/i18n';
 
@@ -54,6 +56,17 @@ export default function App() {
         {builderRoute.page === 'builder' ? <BuilderPage id={builderRoute.id} /> : <LeaderboardBuilderPage id={builderRoute.id} />}
       </I18nProvider>
     );
+  }
+  if (builderRoute?.page === 'chats') {
+    return (
+      <I18nProvider>
+        <ChatBuilderPage id={builderRoute.id} />
+      </I18nProvider>
+    );
+  }
+  if (builderRoute?.page === 'chat') {
+    const { page: _page, ...flags } = builderRoute;
+    return <ChatOverlayPage {...flags} />;
   }
   if (builderRoute?.page === 'leaderboard') {
     const { page: _page, ...flags } = builderRoute;

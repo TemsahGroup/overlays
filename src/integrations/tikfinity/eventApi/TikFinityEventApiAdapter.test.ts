@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NormalizedGiftEvent, NormalizedLikeEvent } from '../../../builder/giftEvents';
+import type { NormalizedChatEvent, NormalizedGiftEvent, NormalizedLikeEvent } from '../../../builder/giftEvents';
 import { TikFinityEventApiAdapter, type SocketLike } from './TikFinityEventApiAdapter';
 
 class FakeSocket implements SocketLike {
@@ -197,6 +197,34 @@ describe('TikFinityEventApiAdapter', () => {
     sockets[0].open();
     sockets[0].send(gift({ ...rose, diamondCount: 1, repeatCount: 5, msgId: 'd1' }));
     expect(events[0]).toMatchObject({ repeatCount: 5, diamondCount: 1 });
+  });
+
+  it('emits chat messages, keeps no text in diagnostics, and drops duplicates', () => {
+    const { adapter, sockets, onEvent } = setup();
+    const chats: NormalizedChatEvent[] = [];
+    adapter.connect(onEvent, { onChat: (c) => chats.push(c) });
+    sockets[0].open();
+    const hello = { comment: 'hello there', uniqueId: 'viewer1', nickname: 'Viewer One', msgId: 'C1', isModerator: true, profilePictureUrl: 'https://p16.tiktokcdn.com/a.jpg' };
+    sockets[0].send({ event: 'chat', data: hello });
+    sockets[0].send({ event: 'chat', data: hello });
+    sockets[0].send({ event: 'chat', data: { uniqueId: 'viewer2' } }); // no comment
+    expect(chats).toEqual([
+      {
+        type: 'chat',
+        username: 'viewer1',
+        nickname: 'Viewer One',
+        comment: 'hello there',
+        avatarUrl: 'https://p16.tiktokcdn.com/a.jpg',
+        isModerator: true,
+        isSubscriber: undefined,
+        eventId: 'C1',
+        isTest: false,
+        provider: 'tikfinity',
+      },
+    ]);
+    expect(adapter.liveState.chatsReceived).toBe(1);
+    expect(adapter.recentDiagnostics.map((d) => d.chat?.status)).toEqual(['unrecognized', 'duplicate', 'final']);
+    expect(JSON.stringify(adapter.recentDiagnostics)).not.toContain('hello there');
   });
 
   it('gift-only pages ignore likes (no onLike given)', () => {

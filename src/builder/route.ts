@@ -12,6 +12,8 @@
 //   #/leaderboards               leaderboard editor (new)
 //   #/leaderboards/<id>          edit a saved leaderboard
 //   #/leaderboard/<id>?c=<data>  leaderboard OBS overlay (same flags as #/overlay)
+//   #/chats, #/chats/<id>        chat overlay editor
+//   #/chat/<id>?c=<data>         chat OBS overlay (same flags as #/overlay)
 //
 // Hash routes keep the existing query-parameter app untouched, need no router
 // dependency and work with Vite's relative `base: './'` on any static host.
@@ -38,6 +40,8 @@ export type BuilderRoute =
   | { page: 'builder'; id: string | null }
   | { page: 'leaderboards'; id: string | null }
   | ({ page: 'leaderboard' } & OverlayFlags)
+  | { page: 'chats'; id: string | null }
+  | ({ page: 'chat' } & OverlayFlags)
   | {
       page: 'overlay';
       id: string;
@@ -53,16 +57,16 @@ export type BuilderRoute =
 
 export function parseHash(hash: string = window.location.hash): BuilderRoute | null {
   if (hash === '#/' || hash === '#') return { page: 'home' };
-  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard)(?:\/([^?]*))?(?:\?(.*))?$/);
+  const m = hash.match(/^#\/(builder|overlay|leaderboards|leaderboard|chats|chat)(?:\/([^?]*))?(?:\?(.*))?$/);
   if (!m) return null;
   const [, page, rawId, query] = m;
   const id = rawId && isValidId(rawId) ? rawId : null;
-  if (page === 'builder' || page === 'leaderboards') return { page, id };
+  if (page === 'builder' || page === 'leaderboards' || page === 'chats') return { page, id };
   if (!id) return null;
   const params = new URLSearchParams(query ?? '');
   const tf = params.get('tf');
   return {
-    page: page === 'leaderboard' ? 'leaderboard' : 'overlay',
+    page: page === 'leaderboard' ? 'leaderboard' : page === 'chat' ? 'chat' : 'overlay',
     id,
     portable: params.get('c'),
     demo: params.get('demo') === '1',
@@ -96,4 +100,9 @@ export function overlayUrl(id: string, portableData?: string): string {
 export function leaderboardUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
   const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
   return `${appBaseUrl()}#/leaderboard/${id}${params ? `?${params}` : ''}`;
+}
+
+export function chatUrl(id: string, portableData?: string, lang?: 'ar' | 'en'): string {
+  const params = [portableData ? `c=${portableData}` : '', lang ? `lang=${lang}` : ''].filter(Boolean).join('&');
+  return `${appBaseUrl()}#/chat/${id}${params ? `?${params}` : ''}`;
 }

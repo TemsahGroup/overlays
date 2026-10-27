@@ -10,10 +10,11 @@ import {
   Deduper,
   type ConnectionState,
   type GiftEventAdapter,
+  type NormalizedChatEvent,
   type NormalizedGiftEvent,
   type NormalizedLikeEvent,
 } from '../../../builder/giftEvents';
-import { describeShape, extractGift, extractLike, maskUser, parseMessage, type GiftExtraction, type GiftLayout } from './parse';
+import { describeShape, extractChat, extractGift, extractLike, maskUser, parseMessage, type GiftExtraction, type GiftLayout } from './parse';
 
 /** Default from the project brief; TikFinity's page shows ws://localhost:21213/ (same loopback service). */
 export const DEFAULT_EVENT_API_URL = 'ws://127.0.0.1:21213/';
@@ -31,6 +32,7 @@ export interface LiveState {
   messages: number;
   giftsReceived: number;
   likesReceived: number;
+  chatsReceived: number;
   lastMessageAt: number | null;
   /** Set only after a real gift message was parsed — the "verified live" signal. */
   verifiedGiftAt: number | null;
@@ -63,11 +65,20 @@ export interface DiagnosticEntry {
     likeCount?: number;
     user?: string;
   };
+  /** Chat text is never kept in diagnostics — only its length. */
+  chat?: {
+    status: 'final' | 'unrecognized' | 'duplicate';
+    missing: string[];
+    length?: number;
+    user?: string;
+  };
 }
 
 export interface ConnectOptions {
   /** Receives like batches (leaderboards). Gift-only pages leave it out. */
   onLike?: (event: NormalizedLikeEvent) => void;
+  /** Receives chat messages (chat overlay). */
+  onChat?: (event: NormalizedChatEvent) => void;
 }
 
 /** Minimal WebSocket surface used here (lets tests inject a fake). */
@@ -96,6 +107,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
   private active = false;
   private onEvent: ((e: NormalizedGiftEvent) => void) | null = null;
   private onLike: ((e: NormalizedLikeEvent) => void) | null = null;
+  private onChat: ((e: NormalizedChatEvent) => void) | null = null;
   private stateListeners = new Set<(s: LiveState) => void>();
   private diagListeners = new Set<(d: DiagnosticEntry) => void>();
   private diagnostics: DiagnosticEntry[] = [];
@@ -118,6 +130,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       messages: 0,
       giftsReceived: 0,
       likesReceived: 0,
+      chatsReceived: 0,
       lastMessageAt: null,
       verifiedGiftAt: null,
       layout: null,
@@ -155,6 +168,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
   connect(onEvent: (event: NormalizedGiftEvent) => void, options: ConnectOptions = {}): void {
     this.onEvent = onEvent;
     this.onLike = options.onLike ?? null;
+    this.onChat = options.onChat ?? null;
     if (this.active) return; // already running: never open a second socket
     this.active = true;
     this.open();
@@ -164,6 +178,7 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
     this.active = false;
     this.onEvent = null;
     this.onLike = null;
+    this.onChat = null;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     const ws = this.socket;
@@ -261,6 +276,10 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       this.handleLike(parsed.data, entry, at);
       return;
     }
+    if (parsed.event === 'chat') {
+      this.handleChat(parsed.data, entry, at);
+      return;
+    }
     if (parsed.event !== 'gift') {
       this.record(entry);
       return;
@@ -340,6 +359,35 @@ export class TikFinityEventApiAdapter implements GiftEventAdapter {
       username: f.username,
       nickname: f.nickname,
       likeCount: f.likeCount,
+      eventId: f.msgId,
+      isTest: false,
+      provider: 'tikfinity',
+    });
+  }
+
+  private handleChat(data: Record<string, unknown>, entry: DiagnosticEntry, at: number): void {
+    const x = extractChat(data);
+    const f = x.fields;
+    entry.chat = { status: x.status, missing: x.missing, length: f.comment?.length, user: maskUser(f.username) };
+    if (x.status !== 'final' || !f.comment || !f.username) {
+      this.record(entry);
+      return;
+    }
+    if (this.dedupe.isDuplicate(f.msgId ? `chat:${f.msgId}` : undefined, at)) {
+      entry.chat.status = 'duplicate';
+      this.record(entry);
+      return;
+    }
+    this.record(entry);
+    this.setState({ chatsReceived: this.live.chatsReceived + 1 });
+    this.onChat?.({
+      type: 'chat',
+      username: f.username,
+      nickname: f.nickname,
+      comment: f.comment,
+      avatarUrl: f.avatarUrl,
+      isModerator: f.isModerator,
+      isSubscriber: f.isSubscriber,
       eventId: f.msgId,
       isTest: false,
       provider: 'tikfinity',

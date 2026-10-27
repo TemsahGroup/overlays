@@ -4,6 +4,8 @@ import { giftIcon } from '../builder/gifts';
 import { repository } from '../builder/repository/localRepository';
 import type { OverlayConfig } from '../builder/types';
 import { OVERLAY_TYPES } from '../catalog/overlayTypes';
+import { chatRepository } from '../chat/repository';
+import type { ChatConfig } from '../chat/types';
 import { leaderboardRepository } from '../leaderboard/repository';
 import type { LeaderboardConfig } from '../leaderboard/types';
 import { AppShell } from '../ui/AppShell';
@@ -26,7 +28,7 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([repository.listMine(), leaderboardRepository.listMine()]).then(([gifts, boards]: [OverlayConfig[], LeaderboardConfig[]]) => {
+    Promise.all([repository.listMine(), leaderboardRepository.listMine(), chatRepository.listMine()]).then(([gifts, boards, chats]: [OverlayConfig[], LeaderboardConfig[], ChatConfig[]]) => {
       if (cancelled) return;
       const list: SavedItem[] = [
         ...gifts.map((c) => ({
@@ -44,6 +46,15 @@ export function HomePage() {
           icon: c.kind === 'likers' ? '❤️' : '🏆',
           name: c.name,
           detail: `${c.kind === 'likers' ? t('lb.likers') : t('lb.gifters')} · ${t('lb.rowsValue', { n: c.topN })}`,
+          paused: !c.enabled,
+          updatedAt: c.updatedAt,
+        })),
+        ...chats.map((c) => ({
+          key: `c-${c.id}`,
+          href: `#/chats/${c.id}`,
+          icon: '💬',
+          name: c.name,
+          detail: t(`chat.look.${c.style}` as StringKey),
           paused: !c.enabled,
           updatedAt: c.updatedAt,
         })),

@@ -43,6 +43,21 @@ export interface NormalizedLikeEvent {
   provider: 'mock' | 'tikfinity';
 }
 
+/** One viewer chat message (chat overlay). */
+export interface NormalizedChatEvent {
+  type: 'chat';
+  username: string;
+  nickname?: string;
+  comment: string;
+  /** https profile picture when the provider sends one. */
+  avatarUrl?: string;
+  isModerator?: boolean;
+  isSubscriber?: boolean;
+  eventId?: string;
+  isTest: boolean;
+  provider: 'mock' | 'tikfinity';
+}
+
 export type ConnectionState =
   | { status: 'mock'; detail: string }
   | { status: 'disconnected'; detail: string }

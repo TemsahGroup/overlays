@@ -84,7 +84,7 @@ export function LiveStatusPanel({ live, state, adapter, diag, extra }: Props) {
       <p className="hint">{state?.detail ?? 'Waiting for configuration…'}</p>
       {state && (
         <p className="hint mono">
-          {state.url} · messages {state.messages} (last {since(state.lastMessageAt)}) · final gifts received {state.giftsReceived} · like batches {state.likesReceived}
+          {state.url} · messages {state.messages} (last {since(state.lastMessageAt)}) · final gifts received {state.giftsReceived} · like batches {state.likesReceived} · chat messages {state.chatsReceived}
           {state.layout ? ` · payload layout ${state.layout}` : ''}
         </p>
       )}
@@ -107,6 +107,7 @@ export function LiveStatusPanel({ live, state, adapter, diag, extra }: Props) {
                       <b>{e.event}</b>
                       {!e.known && <span className="chip chip--error">UNDOCUMENTED EVENT</span>}
                       {e.gift && <span className="chip">{e.gift.status} · {e.gift.layout}</span>}
+                      {e.chat && <span className="chip">chat {e.chat.status} · {e.chat.length ?? 0} chars</span>}
                     </>
                   )}
                 </div>

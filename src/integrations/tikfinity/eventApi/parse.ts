@@ -29,6 +29,14 @@
 // TikTok-Live-Connector notes that for busy streams TikTok does not always
 // send like events, so like totals are approximate.
 //
+// Chat events (v1 README, checked 2026-10-27; v2 documents user only):
+//   text         data.comment
+//   user         data.uniqueId | data.user.uniqueId | data.user.displayId
+//   nickname     data.nickname
+//   avatar       data.profilePictureUrl (https only)
+//   badges       data.isModerator, data.isSubscriber (booleans)
+//   message id   data.msgId
+//
 // Streak rule (both docs): giftType 1 gifts are sent repeatedly with a rising
 // repeatCount while the streak runs; only the message with repeatEnd set is
 // final. Other gift types are final immediately.
@@ -153,6 +161,53 @@ export function extractLike(data: Obj): LikeExtraction {
   if (!fields.username) missing.push(user ? 'user.uniqueId' : 'uniqueId');
   // Without a positive count or a user there is nothing to attribute.
   const ok = fields.likeCount !== undefined && fields.username !== undefined;
+  return { status: ok ? 'final' : 'unrecognized', fields, missing };
+}
+
+export interface ChatFields {
+  comment?: string;
+  username?: string;
+  nickname?: string;
+  avatarUrl?: string;
+  isModerator?: boolean;
+  isSubscriber?: boolean;
+  msgId?: string;
+}
+
+export interface ChatExtraction {
+  status: 'final' | 'unrecognized';
+  fields: ChatFields;
+  missing: string[];
+}
+
+export const MAX_CHAT_LENGTH = 200;
+
+/** Only plain https image URLs are used as avatars; anything else falls back to an initial. */
+const httpsUrl = (v: unknown): string | undefined => {
+  if (typeof v !== 'string' || v.length > 2000) return undefined;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'https:' && !u.username && !u.password ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export function extractChat(data: Obj): ChatExtraction {
+  const user = isObj(data.user) ? data.user : null;
+  const fields: ChatFields = {
+    comment: text(data.comment, MAX_CHAT_LENGTH),
+    username: text(data.uniqueId, 64) ?? text(user?.uniqueId, 64) ?? text(user?.displayId, 64),
+    nickname: text(data.nickname, 64),
+    avatarUrl: httpsUrl(data.profilePictureUrl),
+    isModerator: data.isModerator === true ? true : undefined,
+    isSubscriber: data.isSubscriber === true ? true : undefined,
+    msgId: idText(data.msgId),
+  };
+  const missing: string[] = [];
+  if (!fields.comment) missing.push('comment');
+  if (!fields.username) missing.push(user ? 'user.uniqueId' : 'uniqueId');
+  const ok = fields.comment !== undefined && fields.username !== undefined;
   return { status: ok ? 'final' : 'unrecognized', fields, missing };
 }
 
