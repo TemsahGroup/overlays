@@ -5,8 +5,22 @@ export const LEADERBOARD_SCHEMA_VERSION = 1;
 export type LeaderboardKind = 'gifters' | 'likers';
 
 /** Visual template of the board. */
-export type LeaderboardStyle = 'glass' | 'podium' | 'neon' | 'royal' | 'pills' | 'ticker';
-export const LEADERBOARD_STYLES: LeaderboardStyle[] = ['glass', 'podium', 'neon', 'royal', 'pills', 'ticker'];
+export type LeaderboardStyle =
+  | 'glass'
+  | 'podium'
+  | 'neon'
+  | 'royal'
+  | 'pills'
+  | 'ticker'
+  // Game looks
+  | 'arcade'
+  | 'race'
+  | 'rpg'
+  | 'boss'
+  | 'esports'
+  | 'tower';
+export const LEADERBOARD_STYLES: LeaderboardStyle[] = ['glass', 'podium', 'neon', 'royal', 'pills', 'ticker', 'arcade', 'race', 'rpg', 'boss', 'esports', 'tower'];
+export const GAME_STYLES: LeaderboardStyle[] = ['arcade', 'race', 'rpg', 'boss', 'esports', 'tower'];
 
 export interface LeaderboardConfig {
   schemaVersion: number;
@@ -22,6 +36,8 @@ export interface LeaderboardConfig {
   topN: number;
   /** [accent, secondary accent] */
   colors: [string, string];
+  /** Boss Raid look: health of the first boss in the board's unit (coins, gifts or likes). Each next boss has 1.5×. */
+  bossHp: number;
   /** Hours without events after which the next event starts a new stream session. */
   sessionGapHours: number;
   /** false = revoked: storage-loaded overlays stop updating. */

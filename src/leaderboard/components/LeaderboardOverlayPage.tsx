@@ -10,7 +10,7 @@ import {
 } from '../../integrations/tikfinity/eventApi/TikFinityEventApiAdapter';
 import { clearSession, createSessionSaver, loadSession } from '../persistence';
 import { leaderboardRepository } from '../repository';
-import { addGift, addLike, createSession, rank, scoreMode, shouldStartNewSession, type LeaderboardSession } from '../store';
+import { addGift, addLike, createSession, rank, scoreMode, shouldStartNewSession, totalScore, type LeaderboardSession } from '../store';
 import type { PublicLeaderboardConfig } from '../types';
 import { sanitizePublicLeaderboard } from '../validate';
 import { LeaderboardView } from './LeaderboardView';
@@ -147,6 +147,8 @@ export function LeaderboardOverlayPage({ id, portable, demo, live, setup, diag, 
           test={demo}
           lang={lang ?? 'en'}
           look={config.style}
+          total={config.style === 'boss' ? totalScore(session, config.kind) : undefined}
+          bossHp={config.bossHp}
         />
       ) : (
         <div className="overlay-notice">This leaderboard has been disabled by its owner.</div>

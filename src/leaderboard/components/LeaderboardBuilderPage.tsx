@@ -7,8 +7,8 @@ import { AppShell, Notice, PageHead, StepCard, useToast } from '../../ui/AppShel
 import { useI18n, type Translate } from '../../ui/i18n';
 import { ConnectionCard, LinkCard } from '../../ui/LinkCard';
 import { leaderboardRepository } from '../repository';
-import { createSession, rank, scoreMode, type LeaderboardSession } from '../store';
-import { LEADERBOARD_STYLES, type LeaderboardConfig, type LeaderboardKind, type LeaderboardStyle } from '../types';
+import { createSession, rank, scoreMode, totalScore, type LeaderboardSession } from '../store';
+import { GAME_STYLES, LEADERBOARD_STYLES, type LeaderboardConfig, type LeaderboardKind, type LeaderboardStyle } from '../types';
 import type { RankedRow } from '../store';
 import type { StringKey } from '../../ui/strings';
 import { KIND_DEFAULTS, LB_LIMITS, newLeaderboard, toPublicLeaderboard } from '../validate';
@@ -35,7 +35,15 @@ const SIZE_KEY: Record<LeaderboardStyle, StringKey> = {
   pills: 'lb.size',
   podium: 'lb.sizePodium',
   ticker: 'lb.sizeTicker',
+  arcade: 'lb.size',
+  race: 'lb.sizeWide',
+  rpg: 'lb.size',
+  boss: 'lb.sizePodium',
+  esports: 'lb.size',
+  tower: 'lb.sizePodium',
 };
+
+const CLASSIC_STYLES = LEADERBOARD_STYLES.filter((s) => !GAME_STYLES.includes(s));
 
 const defaultTitle = (t: Translate, kind: LeaderboardKind) => (kind === 'likers' ? t('lb.defaultLikers') : t('lb.defaultGifters'));
 /** Titles that were never edited by the user (any language) follow the kind. */
@@ -129,6 +137,7 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
       title: isDefaultTitle(c.title) ? defaultTitle(t, kind) : c.title,
       name: isDefaultTitle(c.name) ? defaultTitle(t, kind) : c.name,
       colors: [...d.colors] as [string, string],
+      bossHp: d.bossHp,
     }));
     fill(kind);
   };
@@ -200,34 +209,58 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
         <StepCard n={2} title={t('lb.step2')} disabled={readOnly}>
           <div className="field">
             <span>{t('lb.look')}</span>
-            <div className="look-grid" role="radiogroup" aria-label={t('lb.look')}>
-              {LEADERBOARD_STYLES.map((look) => (
-                <button
-                  key={look}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.style === look}
-                  className={`look-card look-card--${look} ${draft.style === look ? 'is-active' : ''}`}
-                  onClick={() => setDraft({ ...draft, style: look })}
-                >
-                  <span className="look-thumb">
-                    <LeaderboardView
-                      title={draft.title}
-                      kind={draft.kind}
-                      rows={SAMPLE_ROWS}
-                      mode="coins"
-                      colors={draft.colors}
-                      topN={look === 'ticker' ? 3 : 5}
-                      test={false}
-                      lang={lang}
-                      look={look}
-                    />
-                  </span>
-                  <b>{t(`lb.look.${look}` as StringKey)}</b>
-                </button>
-              ))}
-            </div>
+            {([
+              ['classic', CLASSIC_STYLES],
+              ['games', GAME_STYLES],
+            ] as const).map(([group, looks]) => (
+              <div key={group}>
+                <div className="look-group-title">{group === 'games' ? `🎮 ${t('lb.looksGames')}` : `✨ ${t('lb.looksClassic')}`}</div>
+                <div className="look-grid" role="radiogroup" aria-label={t('lb.look')}>
+                  {looks.map((look) => (
+                    <button
+                      key={look}
+                      type="button"
+                      role="radio"
+                      aria-checked={draft.style === look}
+                      className={`look-card look-card--${look} ${draft.style === look ? 'is-active' : ''}`}
+                      onClick={() => setDraft({ ...draft, style: look })}
+                    >
+                      <span className="look-thumb">
+                        <LeaderboardView
+                          title={draft.title}
+                          kind={draft.kind}
+                          rows={SAMPLE_ROWS}
+                          mode="coins"
+                          colors={draft.colors}
+                          topN={look === 'ticker' ? 3 : 5}
+                          test={false}
+                          lang={lang}
+                          look={look}
+                          total={Math.round(draft.bossHp * 0.4)}
+                          bossHp={draft.bossHp}
+                        />
+                      </span>
+                      <b>{t(`lb.look.${look}` as StringKey)}</b>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
+          {draft.style === 'boss' && (
+            <label className="field">
+              <span>{t('lb.bossHp')}</span>
+              <input
+                type="number"
+                min={LB_LIMITS.bossHp.min}
+                max={LB_LIMITS.bossHp.max}
+                value={draft.bossHp}
+                onChange={(e) => setDraft({ ...draft, bossHp: Math.min(LB_LIMITS.bossHp.max, Math.max(0, Math.floor(Number(e.target.value) || 0))) })}
+                onBlur={() => setDraft((d) => ({ ...d, bossHp: Math.max(LB_LIMITS.bossHp.min, d.bossHp) }))}
+              />
+              <span className="muted small">{draft.kind === 'likers' ? t('lb.bossHpHintLikes') : t('lb.bossHpHint')}</span>
+            </label>
+          )}
           <label className="field">
             <span>{t('lb.titleOnStream')}</span>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={40} />
@@ -315,6 +348,8 @@ function LeaderboardWorkspace({ id }: { id: string | null }) {
                 test
                 lang={lang}
                 look={draft.style}
+                total={totalScore(preview, draft.kind)}
+                bossHp={draft.bossHp}
               />
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clearSession, createSessionSaver, loadSession, saveSession, type StorageLike } from './persistence';
-import { addGift, addLike, createSession, rank, sanitizeSession, scoreMode, shouldStartNewSession } from './store';
+import { addGift, addLike, bossState, createSession, rank, sanitizeSession, scoreMode, shouldStartNewSession, totalScore, xpLevel } from './store';
 import { sanitizeLeaderboard, sanitizePublicLeaderboard, toPublicLeaderboard, newLeaderboard } from './validate';
 
 const T0 = 1_700_000_000_000;
@@ -86,6 +86,33 @@ describe('ranking', () => {
   });
 });
 
+describe('game looks', () => {
+  it('total damage counts every viewer, not only the top N', () => {
+    let s = createSession(T0);
+    for (let i = 0; i < 8; i++) s = addGift(s, { username: `u${i}`, repeatCount: 1, diamondCount: 10 }, T0 + i);
+    expect(rank(s, 'gifters', 3)).toHaveLength(3);
+    expect(totalScore(s, 'gifters')).toBe(80);
+    expect(totalScore(s, 'likers')).toBe(0);
+  });
+
+  it('boss health carries leftover damage to a stronger next boss', () => {
+    expect(bossState(0, 1000)).toEqual({ level: 1, maxHp: 1000, hp: 1000 });
+    expect(bossState(999, 1000)).toEqual({ level: 1, maxHp: 1000, hp: 1 });
+    expect(bossState(1000, 1000)).toEqual({ level: 2, maxHp: 1500, hp: 1500 });
+    expect(bossState(1700, 1000)).toEqual({ level: 2, maxHp: 1500, hp: 800 });
+    expect(bossState(1e12, 10).level).toBeLessThanOrEqual(999);
+  });
+
+  it('RPG levels grow with score', () => {
+    expect(xpLevel(0)).toEqual({ level: 1, progress: 0 });
+    expect(xpLevel(500).level).toBe(11);
+    expect(xpLevel(10_000).level).toBe(45);
+    const { progress } = xpLevel(30);
+    expect(progress).toBeGreaterThan(0);
+    expect(progress).toBeLessThan(1);
+  });
+});
+
 describe('sessions', () => {
   it('starts a new session after the configured gap without events', () => {
     let s = createSession(T0);
@@ -147,6 +174,15 @@ describe('leaderboard config validation', () => {
     expect(sanitizeLeaderboard({ ...base, style: 'sparkly' })?.style).toBe('glass');
     expect(sanitizeLeaderboard(base)?.style).toBe('glass'); // saved before styles existed
     expect(sanitizePublicLeaderboard({ id: 'abcdef123', style: 'neon' })?.style).toBe('neon');
+    expect(sanitizeLeaderboard({ ...base, style: 'boss' })?.style).toBe('boss');
+  });
+
+  it('boss health has a per-kind default and stays within limits', () => {
+    const base = { id: 'abcdef123', ownerId: 'owner12345' };
+    expect(sanitizeLeaderboard(base)?.bossHp).toBe(1000);
+    expect(sanitizeLeaderboard({ ...base, kind: 'likers' })?.bossHp).toBe(5000);
+    expect(sanitizeLeaderboard({ ...base, bossHp: 2 })?.bossHp).toBe(10);
+    expect(sanitizeLeaderboard({ ...base, bossHp: 'lots' })?.bossHp).toBe(1000);
   });
 
   it('public projection drops the owner', () => {

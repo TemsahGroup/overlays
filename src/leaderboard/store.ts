@@ -110,6 +110,44 @@ export function rank(session: LeaderboardSession, kind: LeaderboardKind, topN: n
     .map((r, i) => ({ rank: i + 1, key: r.key, name: r.name, score: r.score }));
 }
 
+/** Sum of every viewer's score (not only the top N) — the Boss Raid's total damage. */
+export function totalScore(session: LeaderboardSession, kind: LeaderboardKind): number {
+  const mode = scoreMode(session);
+  let total = 0;
+  for (const e of Object.values(session.entries)) total += kind === 'likers' ? e.likes : mode === 'coins' ? e.coins : e.gifts;
+  return total;
+}
+
+export interface BossState {
+  /** 1 = first boss. */
+  level: number;
+  /** Health of the current boss. */
+  maxHp: number;
+  /** Health left on the current boss (> 0). */
+  hp: number;
+}
+
+/** Each boss has 1.5× the health of the previous one; damage left over hits the next boss. */
+export function bossState(total: number, firstHp: number): BossState {
+  let maxHp = Math.max(1, Math.floor(firstHp));
+  let left = Math.max(0, Math.floor(total));
+  let level = 1;
+  while (left >= maxHp && level < 999) {
+    left -= maxHp;
+    maxHp = Math.round(maxHp * 1.5);
+    level++;
+  }
+  return { level, maxHp, hp: maxHp - left };
+}
+
+/** RPG look: level from score (Lv 1 at 0, Lv 11 at 500, Lv 45 at ~10k) and progress to the next level. */
+export function xpLevel(score: number): { level: number; progress: number } {
+  const s = Math.max(0, score);
+  const raw = Math.sqrt(s / 5);
+  const level = Math.min(999, Math.floor(raw) + 1);
+  return { level, progress: level === 999 ? 1 : raw - Math.floor(raw) };
+}
+
 /**
  * "Each stream" reset: TikFinity documents no stream-start event, so a gap of
  * `gapHours` without any event is treated as the start of a new stream.

@@ -11,6 +11,7 @@ import {
 export const LB_LIMITS = {
   topN: { min: 3, max: 10 },
   sessionGapHours: { min: 1, max: 24 },
+  bossHp: { min: 10, max: 10_000_000 },
 } as const;
 
 type Obj = Record<string, unknown>;
@@ -22,9 +23,9 @@ const num = (v: unknown, fallback: number, min: number, max: number) => {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
 };
 
-export const KIND_DEFAULTS: Record<LeaderboardKind, { title: string; colors: [string, string] }> = {
-  gifters: { title: 'Top Gifters', colors: ['#ffd166', '#fe2c55'] },
-  likers: { title: 'Top Likers', colors: ['#fe2c55', '#25f4ee'] },
+export const KIND_DEFAULTS: Record<LeaderboardKind, { title: string; colors: [string, string]; bossHp: number }> = {
+  gifters: { title: 'Top Gifters', colors: ['#ffd166', '#fe2c55'], bossHp: 1000 },
+  likers: { title: 'Top Likers', colors: ['#fe2c55', '#25f4ee'], bossHp: 5000 },
 };
 
 function sanitizeShared(v: Obj) {
@@ -43,6 +44,7 @@ function sanitizeShared(v: Obj) {
       typeof colors[1] === 'string' && HEX_RE.test(colors[1]) ? colors[1] : d.colors[1],
     ] as [string, string],
     sessionGapHours: num(v.sessionGapHours, 3, LB_LIMITS.sessionGapHours.min, LB_LIMITS.sessionGapHours.max),
+    bossHp: num(v.bossHp, d.bossHp, LB_LIMITS.bossHp.min, LB_LIMITS.bossHp.max),
     enabled: v.enabled !== false,
   };
 }
@@ -78,6 +80,7 @@ export function newLeaderboard(ownerId: string, kind: LeaderboardKind = 'gifters
     topN: 5,
     colors: [...d.colors] as [string, string],
     sessionGapHours: 3,
+    bossHp: d.bossHp,
     enabled: true,
     createdAt: now,
     updatedAt: now,
